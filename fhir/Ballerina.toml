@@ -1,0 +1,16 @@
+[package]
+org = "ballerinax"
+name = "health.clients.fhir"
+version = "1.0.0"
+distribution = "2201.4.1"
+authors=["Ballerina"]
+keywords=["Healthcare", "FHIR", "client", "R4"]
+repository="https://github.com/ballerina-platform/module-ballerinax-health.clients"
+
+[build-options]
+observabilityIncluded = true
+
+[[dependency]]
+org="ballerinax"
+name="health.base.auth"
+version="1.0.0"
