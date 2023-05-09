@@ -1,4 +1,4 @@
-This package contains a generic FHIR client connector that can be used to connect to a FHIR server.
+Package containing a generic FHIR client connector that can be used to connect to a FHIR server.
 
 ## Package overview
 
