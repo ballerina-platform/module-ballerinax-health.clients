@@ -71,7 +71,7 @@ public isolated client class FHIRConnector {
     # + summary - The subset of the resource content to be returned
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get resource by the logical ID"}
-    remote isolated function getById(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function get read/id(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Logical ID"} string id,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Summary"} SummaryType? summary = ())
@@ -102,7 +102,7 @@ public isolated client class FHIRConnector {
     # + summary - The subset of the resource content to be returned
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get resource by version"}
-    remote isolated function getByVersion(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function get read/'version(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Logical ID"} string id,
             @display {label: "Version ID"} string 'version,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
@@ -133,7 +133,7 @@ public isolated client class FHIRConnector {
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Update resource"}
-    remote isolated function update(@display {label: "Resource data"} json|xml data,
+    isolated resource function put fhirResource(@display {label: "Resource data"} json|xml data,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                             returns FHIRResponse|FHIRError {
@@ -170,7 +170,7 @@ public isolated client class FHIRConnector {
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Patch resource"}
-    remote isolated function patch(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function patch fhirResource(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Logical ID"} string id,
             @display {label: "Resource data"} json|xml data,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
@@ -200,7 +200,7 @@ public isolated client class FHIRConnector {
     # + id - The logical id of the resource 
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Delete  resource"}
-    remote isolated function delete(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function delete fhirResource(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Logical ID"} string id)
                                             returns FHIRResponse|FHIRError {
         string requestURL = SLASH + 'type + SLASH + id;
@@ -227,7 +227,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get instance history"}
-    remote isolated function getInstanceHistory(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function get history/instance(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Logical ID"} string id,
             @display {label: "History Search Parameters"} HistorySearchParameters parameters = {},
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
@@ -256,7 +256,7 @@ public isolated client class FHIRConnector {
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Create resource"}
-    remote isolated function create(@display {label: "Resource data"} json|xml data,
+    isolated resource function post fhirResource(@display {label: "Resource data"} json|xml data,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                             returns FHIRResponse|FHIRError {
@@ -285,7 +285,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "search resource"}
-    remote isolated function search(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function get search/'type(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Search Parameters"} SearchParameters|map<string[]>? searchParameters = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
@@ -313,7 +313,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get history for a type"}
-    remote isolated function getHistory(@display {label: "Resource Type"} ResourceType|string 'type,
+    isolated resource function get history/'type(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "History Search Parameters"} HistorySearchParameters parameters = {},
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                             returns FHIRResponse|FHIRError {
@@ -341,7 +341,7 @@ public isolated client class FHIRConnector {
     # + uriParameters - The additional parameters like _summary, _elements, refer the server capabilities
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get capability statement"}
-    remote isolated function getConformance(@display {label: "Mode"} ModeType mode = FULL,
+    isolated resource function get metadata(@display {label: "Mode"} ModeType mode = FULL,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return MIME Type"} map<anydata>? uriParameters = ())
                                             returns FHIRResponse|FHIRError {
@@ -369,7 +369,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get all history"}
-    remote isolated function getAllHistory(@display {label: "History Search Parameters"} HistorySearchParameters parameters = {},
+    isolated resource function get history(@display {label: "History Search Parameters"} HistorySearchParameters parameters = {},
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + _HISTORY + setHistoryParams(parameters, returnMimeType);
@@ -395,7 +395,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Search across all resources"}
-    remote isolated function searchAll(@display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+    isolated resource function get search(@display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
         string requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
@@ -421,7 +421,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Batch operation"}
-    remote isolated function batchRequest(@display {label: "Resource data"} json|xml data,
+    isolated resource function post batch(@display {label: "Resource data"} json|xml data,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
         string requestUrl = QUESTION_MARK + setFormatParameters(returnMimeType);
@@ -452,7 +452,7 @@ public isolated client class FHIRConnector {
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Transaction operation"}
-    remote isolated function 'transaction(@display {label: "Resource data"} json|xml data,
+    isolated resource function post 'transaction(@display {label: "Resource data"} json|xml data,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
         string requestUrl = QUESTION_MARK + setFormatParameters(returnMimeType);
@@ -483,7 +483,7 @@ public isolated client class FHIRConnector {
     # + currentBundle - Current bundle resource should be generated as a result of invoking a connector method. This is to ensure consistency of urlRewrite feature. If the urlRewrite is enabled, the current bundles' urls should be rewritten. 
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get next page of a bundle resource"}
-    remote isolated function nextBundle(@display {label: "Current Bundle"} FHIRResponse|json|xml currentBundle)
+    isolated resource function get bundle/next(@display {label: "Current Bundle"} FHIRResponse|json|xml currentBundle)
                                         returns FHIRResponse|FHIRError? {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
@@ -511,7 +511,7 @@ public isolated client class FHIRConnector {
     # + currentBundle - Current bundle resource should be generated as a result of invoking a connector method. This is to ensure consistency of urlRewrite feature. If the urlRewrite is enabled, the current bundles' urls should be rewritten. 
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Get previous page of a bundle resource"}
-    remote isolated function previousBundle(@display {label: "Current Bundle"} FHIRResponse|json|xml currentBundle)
+    isolated resource function get bundle/previous(@display {label: "Current Bundle"} FHIRResponse|json|xml currentBundle)
                                         returns FHIRResponse|FHIRError? {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
@@ -541,7 +541,7 @@ public isolated client class FHIRConnector {
     # + bulkExportParameters - Bulk export parameters
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Start bulk data export process"}
-    remote isolated function bulkExport(@display {label: "Bulk export level"} BulkExportLevel bulkExportLevel,
+    isolated resource function get bulk/export(@display {label: "Bulk export level"} BulkExportLevel bulkExportLevel,
             @display {label: "Group ID to be exported"} string? groupId = (),
             @display {label: "Bulk export parameters"} BulkExportParameters? bulkExportParameters = ())
                                         returns FHIRResponse|FHIRError {
@@ -584,7 +584,7 @@ public isolated client class FHIRConnector {
     # + contentLocation - Bulk status polling url. Found in the response header of the kickoff request
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Check bulk data export progress"}
-    remote isolated function bulkStatus(@display {label: "Bulk status polling url"} string contentLocation)
+    isolated resource function get bulk/status(@display {label: "Bulk status polling url"} string contentLocation)
                                         returns FHIRResponse|FHIRError {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
@@ -611,7 +611,7 @@ public isolated client class FHIRConnector {
     # + contentLocation - Bulk status polling url. Found in the response header of the kickoff request
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Check bulk data export progress"}
-    remote isolated function bulkDataDelete(@display {label: "Bulk status polling url"} string contentLocation)
+    isolated resource function delete bulk/export(@display {label: "Bulk status polling url"} string contentLocation)
                                         returns FHIRResponse|FHIRError {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
@@ -639,7 +639,7 @@ public isolated client class FHIRConnector {
     # + additionalHeaders - Additional headers sent with the request
     # + return - If successful, FhirBulkFileResponse record else FhirError record
     @display {label: "Get exported file as a byte[] stream"}
-    remote isolated function bulkFile(@display {label: "Exported file url"} string fileUrl,
+    isolated resource function get bulk/file(@display {label: "Exported file url"} string fileUrl,
             @display {label: "Additional headers sent with the request"} map<string>? additionalHeaders = ())
                                         returns FHIRBulkFileResponse|FHIRError {
         do {
