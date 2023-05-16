@@ -52,24 +52,24 @@ function testUrlRewrite() returns FHIRError? {
 
     // json
     // Connector config set to enable url rewrite
-    FHIRResponse res1 = check urlRewriteConnector->getConformance();
+    FHIRResponse res1 = check urlRewriteConnector->/metadata();
     test:assertEquals(res1.'resource, testCapabilityStatementJsonUrlRewritten, "Failed to rewrite url and return correct resource.");
 
     // Override connector config to disable url rewrite
-    FHIRResponse res2 = check fhirConnector->getConformance();
+    FHIRResponse res2 = check fhirConnector->/metadata();
     test:assertEquals(res2.'resource, testCapabilityStatementJson, "Failed to return correct resource.");
 
     // xml
     // Connector config set to enable url rewrite
-    FHIRResponse res3 = check urlRewriteConnector->getConformance(returnMimeType = FHIR_XML);
+    FHIRResponse res3 = check urlRewriteConnector->/metadata(returnMimeType = FHIR_XML);
     test:assertEquals(res3.'resource, testCapabilityStatementXmlUrlRewritten, "Failed to rewrite url and return correct resource.");
 
     // Override connector config to disable url rewrite
-    FHIRResponse res4 = check fhirConnector->getConformance(returnMimeType = FHIR_XML);
+    FHIRResponse res4 = check fhirConnector->/metadata(returnMimeType = FHIR_XML);
     test:assertEquals(res4.'resource, testCapabilityStatementXml, "Failed to return correct resource.");
 
     // Testing URL rewrite on headers
-    FHIRResponse res5 = check urlRewriteConnector->bulkExport(EXPORT_SYSTEM);
+    FHIRResponse res5 = check urlRewriteConnector->/bulk/export(EXPORT_SYSTEM);
     string rewrittenPollingUrl = res5.serverResponseHeaders["content-location"] ?: "";
     test:assertEquals(rewrittenPollingUrl, string `${replacementUrl}/exportStatus/1`, "Failed to url rewrite headers");
 
@@ -79,17 +79,17 @@ function testUrlRewrite() returns FHIRError? {
 function testGetById() returns FHIRError? {
 
     // Format param is set to default
-    FHIRResponse result1 = check fhirConnector->getById(PATIENT, "pat1");
+    FHIRResponse result1 = check fhirConnector->/read/id(PATIENT, "pat1");
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testGetResourceDataJson, "Failed to return the resource data.");
 
     // Format param is set to xml
-    FHIRResponse result2 = check fhirConnector->getById(PATIENT, "pat1", returnMimeType = FHIR_XML);
+    FHIRResponse result2 = check fhirConnector->/read/id(PATIENT, "pat1", returnMimeType = FHIR_XML);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testGetResourceDataXml, "Failed to return the resource data.");
 
     // resource doesn't exists
-    FHIRResponse|FHIRError result3 = fhirConnector->getById(PATIENT, "pat170");
+    FHIRResponse|FHIRError result3 = fhirConnector->/read/id(PATIENT, "pat170");
     if result3 is FHIRError {
         if result3 is FHIRServerError {
             test:assertEquals(result3.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -108,17 +108,17 @@ function testGetById() returns FHIRError? {
 function testGetByVersion() returns FHIRError? {
 
     // Format param is set to default
-    FHIRResponse result1 = check fhirConnector->getByVersion(PATIENT, "pat1", "100");
+    FHIRResponse result1 = check fhirConnector->/read/'version(PATIENT, "pat1", "100");
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testGetResourceDataJson, "Failed to return the resource data.");
 
     // Format param is set to xml
-    FHIRResponse result2 = check fhirConnector->getByVersion(PATIENT, "pat1", "100", returnMimeType = FHIR_XML);
+    FHIRResponse result2 = check fhirConnector->/read/'version(PATIENT, "pat1", "100", returnMimeType = FHIR_XML);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testGetResourceDataXml, "Failed to return the resource data.");
 
     // resource doesn't exists
-    FHIRResponse|FHIRError result3 = fhirConnector->getByVersion(PATIENT, "pat1", "101");
+    FHIRResponse|FHIRError result3 = fhirConnector->/read/'version(PATIENT, "pat1", "101");
     if result3 is FHIRError {
         if result3 is FHIRServerError {
             test:assertEquals(result3.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -136,22 +136,22 @@ function testGetByVersion() returns FHIRError? {
 @test:Config {}
 function testUpdate() returns FHIRError? {
     // json data
-    FHIRResponse result1 = check fhirConnector->update(testUpdateResourceDataJson);
+    FHIRResponse result1 = check fhirConnector->/fhirResource.put(testUpdateResourceDataJson);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, locationDetails, "Failed to return location details.");
 
     //xml data 
-    FHIRResponse result2 = check fhirConnector->update(testUpdateResourceDataXml);
+    FHIRResponse result2 = check fhirConnector->/fhirResource.put(testUpdateResourceDataXml);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, locationDetails, "Failed to return location details.");
 
     //prefer head set to representation
-    FHIRResponse result3 = check fhirConnector->update(testUpdateResourceDataJson, returnPreference = REPRESENTATION);
+    FHIRResponse result3 = check fhirConnector->/fhirResource.put(testUpdateResourceDataJson, returnPreference = REPRESENTATION);
     test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result3.'resource, testGetResourceDataJson, "Failed to return location details.");
 
     // data doesn't contain id attribute
-    FHIRResponse|FHIRError result4 = fhirConnector->update(testUpdateResourceDataJsonMissingId);
+    FHIRResponse|FHIRError result4 = fhirConnector->/fhirResource.put(testUpdateResourceDataJsonMissingId);
     if result4 is FHIRError {
         if result4 is FHIRConnectorError {
             error? e = result4.detail().errorDetails;
@@ -172,12 +172,12 @@ function testUpdate() returns FHIRError? {
 @test:Config {}
 function testPatch() returns FHIRError? {
     // resource exists
-    FHIRResponse result1 = check fhirConnector->patch(PATIENT, "pat1", testPatchResourceDataXml, patchContentType = FHIR_XML);
+    FHIRResponse result1 = check fhirConnector->/fhirResource.patch(PATIENT, "pat1", testPatchResourceDataXml, patchContentType = FHIR_XML);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, locationDetails, "Failed to return location details.");
 
     // resource doesn't exists
-    FHIRResponse|FHIRError result2 = fhirConnector->patch(PATIENT, "pat2", testPatchResourceDataXml, patchContentType = FHIR_XML);
+    FHIRResponse|FHIRError result2 = fhirConnector->/fhirResource.patch(PATIENT, "pat2", testPatchResourceDataXml, patchContentType = FHIR_XML);
     if result2 is FHIRError {
         if result2 is FHIRServerError {
             test:assertEquals(result2.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -196,11 +196,11 @@ function testPatch() returns FHIRError? {
 @test:Config {}
 function testDelete() returns FHIRError? {
     // requested resource exists
-    FHIRResponse result1 = check fhirConnector->delete(PATIENT, "pat1");
+    FHIRResponse result1 = check fhirConnector->/fhirResource.delete(PATIENT, "pat1");
     test:assertEquals(result1.httpStatusCode, 204, "Failed to return the correct status code");
 
     // resource not found
-    FHIRResponse|FHIRError result2 = fhirConnector->delete(PATIENT, "pat2");
+    FHIRResponse|FHIRError result2 = fhirConnector->/fhirResource.delete(PATIENT, "pat2");
     if result2 is FHIRError {
         if result2 is FHIRServerError {
             test:assertEquals(result2.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -219,12 +219,12 @@ function testDelete() returns FHIRError? {
 @test:Config {}
 function testGetInstanceHistory() returns FHIRError? {
     // requested resource exists 
-    FHIRResponse result1 = check fhirConnector->getInstanceHistory(PATIENT, "pat1");
+    FHIRResponse result1 = check fhirConnector->/history/instance(PATIENT, "pat1");
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testGetResourceDataJson, "Failed to return resource bundle");
 
     // requested resource doesn't exits 
-    FHIRResponse|FHIRError result2 = fhirConnector->getInstanceHistory(PATIENT, "pat10");
+    FHIRResponse|FHIRError result2 = fhirConnector->/history/instance(PATIENT, "pat10");
     if result2 is FHIRError {
         if result2 is FHIRServerError {
             test:assertEquals(result2.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -243,36 +243,36 @@ function testGetInstanceHistory() returns FHIRError? {
 @test:Config {}
 function testCreate() returns FHIRError? {
     // create with default values
-    FHIRResponse result1 = check fhirConnector->create(testUpdateResourceDataJson);
+    FHIRResponse result1 = check fhirConnector->/fhirResource.post(testUpdateResourceDataJson);
     test:assertEquals(result1.httpStatusCode, 201, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, locationDetails, "Failed to return location details.");
 
     //prefer header set to representation and xml data
-    FHIRResponse result2 = check fhirConnector->create(testUpdateResourceDataXml, returnPreference = REPRESENTATION);
+    FHIRResponse result2 = check fhirConnector->/fhirResource.post(testUpdateResourceDataXml, returnPreference = REPRESENTATION);
     test:assertEquals(result2.httpStatusCode, 201, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testGetResourceDataJson, "Failed to return location details.");
 }
 
 @test:Config {}
 function testSearch() returns FHIRError? {
-    FHIRResponse result1 = check fhirConnector->search(PATIENT);
+    FHIRResponse result1 = check fhirConnector->/search/'type(PATIENT);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testSearchDataSet1Json, "Failed to return search result bundle.");
 
     // Using default params. urlRewrite set to true
-    FHIRResponse result2 = check urlRewriteConnector->search(PATIENT);
+    FHIRResponse result2 = check urlRewriteConnector->/search/'type(PATIENT);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testSearchDataSet1JsonUrlRewritten, "Failed to return URL rewritten search result bundle.");
 }
 
 @test:Config {}
 function testGetHistory() returns FHIRError? {
-    FHIRResponse result1 = check fhirConnector->getHistory(PATIENT, parameters = {_count: "5", _since: "2010-05-05"});
+    FHIRResponse result1 = check fhirConnector->/history/'type(PATIENT, parameters = {_count: "5", _since: "2010-05-05"});
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testHistoryDataJson, "Failed to return history result bundle.");
 
     // Using default params. urlRewrite set to true
-    FHIRResponse result2 = check urlRewriteConnector->getHistory(PATIENT, parameters = {_count: "5", _since: "2010-05-05"});
+    FHIRResponse result2 = check urlRewriteConnector->/history/'type(PATIENT, parameters = {_count: "5", _since: "2010-05-05"});
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testHistoryDataJsonUrlRewritten, "Failed to return URL rewritten history result bundle.");
 }
@@ -280,36 +280,36 @@ function testGetHistory() returns FHIRError? {
 @test:Config {}
 function testGetConformance() returns FHIRError? {
     // get full capability statement. urlRewrite set to true 
-    FHIRResponse result1 = check urlRewriteConnector->getConformance();
+    FHIRResponse result1 = check urlRewriteConnector->/metadata();
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testCapabilityStatementJsonUrlRewritten, "Failed to return url rewritten capability statement.");
 
     //returns other types of modes
-    FHIRResponse result2 = check fhirConnector->getConformance(mode = TERMINOLOGY);
+    FHIRResponse result2 = check fhirConnector->/metadata(mode = TERMINOLOGY);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testCapStatementData, "Failed to return capability statement.");
 }
 
 @test:Config {}
 function testGetAllHistory() returns FHIRError? {
-    FHIRResponse result1 = check fhirConnector->getAllHistory(parameters = {_count: "5"});
+    FHIRResponse result1 = check fhirConnector->/history(parameters = {_count: "5"});
     test:assertEquals(result1.httpStatusCode, http:STATUS_OK, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testHistoryDataJson, "Failed to return history result bundle.");
 
     // Using default params. urlRewrite set to true
-    FHIRResponse result2 = check urlRewriteConnector->getAllHistory(parameters = {_count: "5"});
+    FHIRResponse result2 = check urlRewriteConnector->/history(parameters = {_count: "5"});
     test:assertEquals(result2.httpStatusCode, http:STATUS_OK, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testHistoryDataJsonUrlRewritten, "Failed to return URL rewritten history result bundle.");
 }
 
 @test:Config {}
 function testSearchAll() returns FHIRError? {
-    FHIRResponse result1 = check fhirConnector->searchAll(searchParameters = {_id: ["50"]});
+    FHIRResponse result1 = check fhirConnector->/search(searchParameters = {_id: ["50"]});
     test:assertEquals(result1.httpStatusCode, http:STATUS_OK, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testSearchDataSet2Json, "Failed to return search result bundle.");
 
     // Using default params. urlRewrite set to true
-    FHIRResponse result2 = check urlRewriteConnector->searchAll(searchParameters = {_id: ["50"]});
+    FHIRResponse result2 = check urlRewriteConnector->/search(searchParameters = {_id: ["50"]});
     test:assertEquals(result2.httpStatusCode, http:STATUS_OK, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testSearchDataSet2JsonUrlRewritten, "Failed to return URL rewritten search result bundle.");
 }
@@ -317,17 +317,17 @@ function testSearchAll() returns FHIRError? {
 @test:Config {}
 function testBatchRequest() returns FHIRError? {
     // json request
-    FHIRResponse result1 = check fhirConnector->batchRequest(testBatchDataJson);
+    FHIRResponse result1 = check fhirConnector->/batch.post(testBatchDataJson);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testBundleDataJson, "Failed to return batch result bundle.");
 
     // xml request
-    FHIRResponse result2 = check fhirConnector->batchRequest(testBatchDataXml);
+    FHIRResponse result2 = check fhirConnector->/batch.post(testBatchDataXml);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testBundleDataJson, "Failed to return batch result bundle.");
 
     // invalid bundle type
-    FHIRResponse|FHIRError result3 = fhirConnector->batchRequest(testTransactionDataJson);
+    FHIRResponse|FHIRError result3 = fhirConnector->/batch.post(testTransactionDataJson);
     if result3 is FHIRError {
         if result3 is FHIRConnectorError {
             error? e = result3.detail().errorDetails;
@@ -349,12 +349,12 @@ function testBatchRequest() returns FHIRError? {
 @test:Config {}
 function testTransaction() returns FHIRError? {
     // json request
-    FHIRResponse result1 = check fhirConnector->'transaction(testTransactionDataJson);
+    FHIRResponse result1 = check fhirConnector->/'transaction.post(testTransactionDataJson);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, testBundleDataJson, "Failed to return batch result bundle.");
 
     // invalid bundle type
-    FHIRResponse|FHIRError result2 = fhirConnector->'transaction(testBatchDataJson);
+    FHIRResponse|FHIRError result2 = fhirConnector->/'transaction.post(testBatchDataJson);
     if result2 is FHIRError {
         if result2 is FHIRConnectorError {
             error? e = result2.detail().errorDetails;
@@ -374,10 +374,10 @@ function testTransaction() returns FHIRError? {
 
 @test:Config {}
 function testNextBundle() returns FHIRError? {
-    FHIRResponse initialResultJson = check urlRewriteConnector->search(PATIENT);
+    FHIRResponse initialResultJson = check urlRewriteConnector->/search/'type(PATIENT);
 
     // next bundle exists JSON
-    FHIRResponse? nextBundleJson = check urlRewriteConnector->nextBundle(initialResultJson);
+    FHIRResponse? nextBundleJson = check urlRewriteConnector->/bundle/next(initialResultJson);
 
     if nextBundleJson is FHIRResponse {
         test:assertEquals(nextBundleJson.httpStatusCode, 200, "Failed to return the correct status code");
@@ -388,7 +388,7 @@ function testNextBundle() returns FHIRError? {
     }
 
     // next bundle doesn't exists 
-    FHIRResponse? nextBundle2 = check urlRewriteConnector->nextBundle(nextBundleJson);
+    FHIRResponse? nextBundle2 = check urlRewriteConnector->/bundle/next(nextBundleJson);
     if nextBundle2 is () {
         test:assertTrue(true);
     } else {
@@ -396,8 +396,8 @@ function testNextBundle() returns FHIRError? {
     }
 
     // next bundle exists XML
-    FHIRResponse initialResultXml = check urlRewriteConnector->search(PATIENT, returnMimeType = FHIR_XML);
-    FHIRResponse? nextBundleXml = check urlRewriteConnector->nextBundle(initialResultXml);
+    FHIRResponse initialResultXml = check urlRewriteConnector->/search/'type(PATIENT, returnMimeType = FHIR_XML);
+    FHIRResponse? nextBundleXml = check urlRewriteConnector->/bundle/next(initialResultXml);
 
     if nextBundleXml is FHIRResponse {
         test:assertEquals(nextBundleXml.httpStatusCode, 200, "Failed to return the correct status code");
@@ -412,10 +412,10 @@ function testNextBundle() returns FHIRError? {
 @test:Config {}
 function testPreviousBundle() returns FHIRError?|error {
 
-    FHIRResponse initialResult = check urlRewriteConnector->search(PATIENT);
+    FHIRResponse initialResult = check urlRewriteConnector->/search/'type(PATIENT);
 
     //  previous bundle doesn't exists 
-    FHIRResponse? prevBundle = check urlRewriteConnector->previousBundle(initialResult);
+    FHIRResponse? prevBundle = check urlRewriteConnector->/bundle/previous(initialResult);
     if prevBundle is () {
         test:assertTrue(true);
     } else {
@@ -423,9 +423,9 @@ function testPreviousBundle() returns FHIRError?|error {
     }
 
     // previous bundle exists 
-    FHIRResponse? nextBundle = check urlRewriteConnector->nextBundle(initialResult);
+    FHIRResponse? nextBundle = check urlRewriteConnector->/bundle/next(initialResult);
 
-    FHIRResponse? prevBundle2 = check urlRewriteConnector->previousBundle(nextBundle);
+    FHIRResponse? prevBundle2 = check urlRewriteConnector->/bundle/previous(nextBundle);
     if prevBundle2 is FHIRResponse {
         test:assertEquals(prevBundle2.httpStatusCode, 200, "Failed to return the correct status code");
         test:assertEquals(prevBundle2.'resource, testSearchDataSet1JsonUrlRewritten, "Failed to get the previous page bundle data");
@@ -438,22 +438,22 @@ function testPreviousBundle() returns FHIRError?|error {
 @test:Config {}
 function testBulkExportKickOff() returns FHIRError? {
     // System export kick off
-    FHIRResponse result1 = check fhirConnector->bulkExport(EXPORT_SYSTEM);
+    FHIRResponse result1 = check fhirConnector->/bulk/export(EXPORT_SYSTEM);
     test:assertEquals(result1.httpStatusCode, 202, "Failed to return the correct status code");
     test:assertTrue(result1.serverResponseHeaders["content-location"] != (), "Failed to return bulk export content location header");
 
     // Patient level export kick off
-    FHIRResponse result2 = check fhirConnector->bulkExport(EXPORT_PATIENT);
+    FHIRResponse result2 = check fhirConnector->/bulk/export(EXPORT_PATIENT);
     test:assertEquals(result2.httpStatusCode, 202, "Failed to return the correct status code");
     test:assertTrue(result2.serverResponseHeaders["content-location"] != (), "Failed to return bulk export content location header");
 
     // Export group kick off
-    FHIRResponse result3 = check fhirConnector->bulkExport(EXPORT_GROUP, "123");
+    FHIRResponse result3 = check fhirConnector->/bulk/export(EXPORT_GROUP, "123");
     test:assertEquals(result3.httpStatusCode, 202, "Failed to return the correct status code");
     test:assertTrue(result3.serverResponseHeaders["content-location"] != (), "Failed to return bulk export content location header");
 
     // Export group kick off with no group id
-    FHIRResponse|FHIRError result4 = fhirConnector->bulkExport(EXPORT_GROUP);
+    FHIRResponse|FHIRError result4 = fhirConnector->/bulk/export(EXPORT_GROUP);
     if result4 is FHIRError {
         if result4 is FHIRConnectorError {
             error? e = result4.detail().errorDetails;
@@ -469,7 +469,7 @@ function testBulkExportKickOff() returns FHIRError? {
     }
 
     // System export kick off with params
-    FHIRResponse result5 = check fhirConnector->bulkExport(
+    FHIRResponse result5 = check fhirConnector->/bulk/export(
         EXPORT_SYSTEM,
         bulkExportParameters = {
         _since: "2017-01-01T00:00:00Z",
@@ -483,20 +483,20 @@ function testBulkExportKickOff() returns FHIRError? {
 @test:Config {}
 function testBulkExportStatus() returns FHIRError? {
     // System export kick off
-    FHIRResponse result1 = check fhirConnector->bulkExport(EXPORT_SYSTEM);
+    FHIRResponse result1 = check fhirConnector->/bulk/export(EXPORT_SYSTEM);
     string pollingUrl = result1.serverResponseHeaders["content-location"] ?: "";
 
     // Polling the export status
-    FHIRResponse result2 = check fhirConnector->bulkStatus(pollingUrl);
+    FHIRResponse result2 = check fhirConnector->/bulk/status(pollingUrl);
     test:assertEquals(result2.httpStatusCode, 202, "Failed to return the correct status code");
 
     // Polling the export status when export is completed
-    FHIRResponse result3 = check fhirConnector->bulkStatus(string `${localhost}${testServerBaseUrl}/exportStatus/2`);
+    FHIRResponse result3 = check fhirConnector->/bulk/status(string `${localhost}${testServerBaseUrl}/exportStatus/2`);
     test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result3.'resource, testExportFileManifestData, "Failed to return the bulk export manifest");
 
     // Polling the export status when export is completed - url rewrite is enabled
-    FHIRResponse result4 = check urlRewriteConnector->bulkStatus(string `${replacementUrl}/exportStatus/2`);
+    FHIRResponse result4 = check urlRewriteConnector->/bulk/status(string `${replacementUrl}/exportStatus/2`);
     test:assertEquals(result4.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result4.'resource, testExportFileManifestDataUrlRewritten, "Failed to return the url rewritten bulk export manifest");
 
@@ -505,16 +505,16 @@ function testBulkExportStatus() returns FHIRError? {
 @test:Config {}
 function testBulkExportCancel() returns FHIRError? {
     // System export kick off
-    FHIRResponse result1 = check fhirConnector->bulkExport(EXPORT_SYSTEM);
+    FHIRResponse result1 = check fhirConnector->/bulk/export(EXPORT_SYSTEM);
     string pollingUrl = result1.serverResponseHeaders["content-location"] ?: "";
 
     // Cancel the export
-    FHIRResponse result2 = check fhirConnector->bulkDataDelete(pollingUrl);
+    FHIRResponse result2 = check fhirConnector->/bulk/export.delete(pollingUrl);
     test:assertEquals(result2.httpStatusCode, 202, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testBulkExportCancelResponse, "Failed to return the bulk export cancel success payload");
 
     // Using an invalid polling url
-    FHIRResponse|FHIRError result3 = fhirConnector->bulkDataDelete(string `${localhost}${testServerBaseUrl}/exportStatus/3`);
+    FHIRResponse|FHIRError result3 = fhirConnector->/bulk/export.delete(string `${localhost}${testServerBaseUrl}/exportStatus/3`);
     if result3 is FHIRError {
         if result3 is FHIRServerError {
             FHIRServerErrorDetails e = result3.detail();
@@ -532,11 +532,11 @@ function testBulkExportCancel() returns FHIRError? {
 @test:Config {}
 function testBulkExportFileAccess() returns error? {
     // Polling the export status when export is completed
-    FHIRResponse result1 = check urlRewriteConnector->bulkStatus(string `${replacementUrl}/exportStatus/2`);
+    FHIRResponse result1 = check urlRewriteConnector->/bulk/status(string `${replacementUrl}/exportStatus/2`);
     string fileUrl = (check (<json[]>(check (<json>result1.'resource).output))[0].url).toString();
 
     // Accessing the file
-    FHIRBulkFileResponse result2 = check urlRewriteConnector->bulkFile(fileUrl);
+    FHIRBulkFileResponse result2 = check urlRewriteConnector->/bulk/file(fileUrl);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
 
     stream<byte[], io:Error?> fileStream = result2.dataStream;
@@ -554,7 +554,7 @@ function testBulkExportFileAccess() returns error? {
     test:assertEquals(fileContent, testBulkExportFileData, "Failed to return the correct file content");
 
     // With invalid url
-    FHIRBulkFileResponse|FHIRError result3 = urlRewriteConnector->bulkFile(fileUrl + "invalid");
+    FHIRBulkFileResponse|FHIRError result3 = urlRewriteConnector->/bulk/file(fileUrl + "invalid");
     if result3 is FHIRError {
         if result3 is FHIRServerError {
             FHIRServerErrorDetails e = result3.detail();
