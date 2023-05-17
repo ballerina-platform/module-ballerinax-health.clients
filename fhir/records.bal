@@ -27,17 +27,17 @@ import ballerinax/health.base.auth;
 # + fileServerAuthConfig - Authentication configs that will be used to create the http client for the bulk export file server
 # + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well
 # + replacementURL - Base url of the service to rewrite FHIR server URLs
-public type FHIRConnectorConfig record {|
+public type FhirConnectorConfig record {|
     @display {label: "FHIR server base url"}
     string baseURL;
     @display {label: "MIME type of the return response"}
     MimeType mimeType = FHIR_JSON;
     @display {label: "Authentication configs of the FHIR server"}
-    (http:ClientAuthConfig|auth:PKJWTAuthConfig) authConfig?;
+    (http:ClientAuthConfig|auth:PkjwtAuthConfig) authConfig?;
     @display {label: "Bulk export file server base url"}
     string fileServerBaseURL?;
     @display {label: "Authentication configs of the bulk export file server"}
-    (http:ClientAuthConfig|auth:PKJWTAuthConfig) fileServerAuthConfig?;
+    (http:ClientAuthConfig|auth:PkjwtAuthConfig) fileServerAuthConfig?;
     @display {label: "Rewrite FHIR server URL"}
     boolean urlRewrite = false;
     @display {label: "Base url of the service to rewrite FHIR server URLs"}
@@ -49,7 +49,7 @@ public type FHIRConnectorConfig record {|
 # + httpStatusCode - HTTP status code from the interaction  
 # + 'resource - Field Description  
 # + serverResponseHeaders - Map of header values returning from the server
-public type FHIRResponse record {|
+public type FhirResponse record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
@@ -61,7 +61,7 @@ public type FHIRResponse record {|
 # + httpStatusCode - HTTP status code returned from the server 
 # + dataStream - Bulk data file stream   
 # + serverResponseHeaders - Map of header values returned from the server
-public type FHIRBulkFileResponse record {|
+public type FhirBulkFileResponse record {|
     int httpStatusCode;
     stream<byte[], io:Error?> dataStream;
     map<string> serverResponseHeaders;
@@ -72,7 +72,7 @@ public type FHIRBulkFileResponse record {|
 # + httpStatusCode - HTTP status code from the interaction  
 # + 'resource - Field Description  
 # + serverResponseHeaders - Map of header values returning from the server
-public type FHIRServerErrorDetails record {|
+public type FhirServerErrorDetails record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
@@ -80,20 +80,20 @@ public type FHIRServerErrorDetails record {|
 |};
 
 # Represents the error type for an unsuccessful interaction with the server 
-public type FHIRServerError distinct error<FHIRServerErrorDetails>;
+public type FhirServerError distinct error<FhirServerErrorDetails>;
 
 # Represent Connector related errors
 #
 # + errorDetails - the full error 
-public type FHIRConnectorErrorDetail record {|
+public type FhirConnectorErrorDetail record {|
     error errorDetails?;
 |};
 
 # Represents the error type for connector side errors
-public type FHIRConnectorError distinct error<FHIRConnectorErrorDetail>;
+public type FhirConnectorError distinct error<FhirConnectorErrorDetail>;
 
 # Represents the errors that can be returned from the connector 
-public type FHIRError FHIRServerError|FHIRConnectorError;
+public type FhirError FhirServerError|FhirConnectorError;
 
 // TODO: have to change the var data types
 # Represents parameters that can be used in a history interaction, add more name value pairs if necessary

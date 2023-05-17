@@ -18,7 +18,7 @@ import ballerina/regex;
 import ballerina/http;
 
 # Rewrites base url in the response payload with the given url
-public isolated service class URLRewriteInterceptor {
+public isolated service class UrlRewriteInterceptor {
     *http:ResponseInterceptor;
     private final string 'source;
     private final string target;

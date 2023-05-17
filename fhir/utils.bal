@@ -73,7 +73,7 @@ isolated function extractResponseBody(http:Response response) returns xml|json|e
     return responseBody;
 }
 
-isolated function getFhirResourceResponse(http:Response response) returns FHIRResponse|FHIRError {
+isolated function getFhirResourceResponse(http:Response response) returns FhirResponse|FhirError {
     do {
         xml|json responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
@@ -134,7 +134,7 @@ isolated function extractResourceIdNVid(string url) returns ResourceLocationDeta
     };
 }
 
-isolated function getAlteredResourceResponse(http:Response response, PreferenceType preference) returns FHIRResponse|FHIRError {
+isolated function getAlteredResourceResponse(http:Response response, PreferenceType preference) returns FhirResponse|FhirError {
     do {
         xml|json responseBody = "";
 
@@ -148,11 +148,11 @@ isolated function getAlteredResourceResponse(http:Response response, PreferenceT
             } else {
                 responseBody = check extractResponseBody(response);
             }
-            FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
+            FhirResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
             responseBody = check extractResponseBody(response);
-            FHIRServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
+            FhirServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
             return fhirServerError;
         }
     } on fail var e {
@@ -160,7 +160,7 @@ isolated function getAlteredResourceResponse(http:Response response, PreferenceT
     }
 }
 
-isolated function getDeleteResourceResponse(http:Response response) returns FHIRResponse|FHIRError {
+isolated function getDeleteResourceResponse(http:Response response) returns FhirResponse|FhirError {
     do {
         int statusCode = response.statusCode;
         xml|json responseBody = "";
@@ -168,14 +168,14 @@ isolated function getDeleteResourceResponse(http:Response response) returns FHIR
 
         if statusCode == STATUS_CODE_OK {
             responseBody = check extractResponseBody(response);
-            FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
+            FhirResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else if statusCode == STATUS_CODE_NO_CONTENT || statusCode == STATUS_CODE_ACCEPTED {
-            FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
+            FhirResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
             responseBody = check extractResponseBody(response);
-            FHIRServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
+            FhirServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
             return fhirServerError;
         }
     } on fail var e {
@@ -195,17 +195,17 @@ isolated function formUrlFromMap(map<anydata> data) returns string {
 isolated function setHistoryParams(HistorySearchParameters params, MimeType? returnMimeType) returns string =>
     string `${QUESTION_MARK}${formUrlFromMap(params)}${setFormatParameters(returnMimeType)}`;
 
-isolated function getBundleResponse(http:Response response) returns FHIRResponse|FHIRError {
+isolated function getBundleResponse(http:Response response) returns FhirResponse|FhirError {
     do {
         int statusCode = response.statusCode;
         json|xml responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
 
         if statusCode == STATUS_CODE_OK {
-            FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
+            FhirResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
-            FHIRServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
+            FhirServerError fhirServerError = error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
             return fhirServerError;
         }
     } on fail var e {
@@ -299,8 +299,8 @@ isolated function extractPageUrlsFromXml(xml bundle) returns Pagination|error {
     return pagination;
 }
 
-isolated function extractNextPageUrl(FHIRResponse|json|xml data, string baseUrl) returns string|error? {
-    json|xml bundle = data is FHIRResponse ? data.'resource : <json|xml>data;
+isolated function extractNextPageUrl(FhirResponse|json|xml data, string baseUrl) returns string|error? {
+    json|xml bundle = data is FhirResponse ? data.'resource : <json|xml>data;
     Pagination paginationResult;
     if bundle is json {
         paginationResult = check extractPageUrlsFromJson(bundle);
@@ -314,8 +314,8 @@ isolated function extractNextPageUrl(FHIRResponse|json|xml data, string baseUrl)
     return ();
 }
 
-isolated function extractPrevPageUrl(FHIRResponse|json|xml data, string baseUrl) returns string|error? {
-    json|xml bundle = data is FHIRResponse ? data.'resource : <json|xml>data;
+isolated function extractPrevPageUrl(FhirResponse|json|xml data, string baseUrl) returns string|error? {
+    json|xml bundle = data is FhirResponse ? data.'resource : <json|xml>data;
     Pagination paginationResult;
     if bundle is json {
         paginationResult = check extractPageUrlsFromJson(bundle);
@@ -446,10 +446,10 @@ public isolated function handleError(string msg, int statusCode = http:STATUS_IN
 #
 # + fhirResponse - FHIR response to be converted to HTTP response
 # + return - The HTTP response
-public isolated function handleResponse(FHIRResponse|FHIRError fhirResponse) returns http:Response {
+public isolated function handleResponse(FhirResponse|FhirError fhirResponse) returns http:Response {
     http:Response finalResponse = new ();
     string contentType = FHIR_JSON;
-    if fhirResponse is FHIRResponse {
+    if fhirResponse is FhirResponse {
         finalResponse.statusCode = fhirResponse.httpStatusCode;
         finalResponse.setPayload(fhirResponse.'resource);
         if fhirResponse.serverResponseHeaders.hasKey(http:CONTENT_TYPE) {
@@ -461,7 +461,7 @@ public isolated function handleResponse(FHIRResponse|FHIRError fhirResponse) ret
             finalResponse.statusCode = http:STATUS_INTERNAL_SERVER_ERROR;
         }
     } else {
-        if fhirResponse is FHIRServerError {
+        if fhirResponse is FhirServerError {
             finalResponse.statusCode = fhirResponse.detail().httpStatusCode;
             if fhirResponse.detail().serverResponseHeaders.hasKey(http:CONTENT_TYPE) {
                 contentType = fhirResponse.detail().serverResponseHeaders.get(http:CONTENT_TYPE);
@@ -510,7 +510,7 @@ isolated function setBulkExportParams(BulkExportParameters params) returns strin
         : paramString;
 }
 
-isolated function getBulkExportResponse(http:Response response) returns FHIRResponse|FHIRError {
+isolated function getBulkExportResponse(http:Response response) returns FhirResponse|FhirError {
     int statusCode = response.statusCode;
     json|error tempResponseBody = response.getJsonPayload();
     json responseBody;
@@ -519,7 +519,7 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
     } else if tempResponseBody is json {
         responseBody = tempResponseBody;
     } else {
-        return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${tempResponseBody.message()}`, errorDetails = tempResponseBody);
+        return error FhirConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${tempResponseBody.message()}`, errorDetails = tempResponseBody);
     }
     map<string> responseHeaders = extractHeadersFromResponse(response);
     if statusCode == http:STATUS_OK || statusCode == http:STATUS_ACCEPTED {
@@ -529,7 +529,7 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
             serverResponseHeaders: responseHeaders
         };
     }
-    return error FHIRServerError(
+    return error FhirServerError(
         FHIR_SERVER_ERROR,
         httpStatusCode = statusCode,
         'resource = responseBody,
@@ -537,7 +537,7 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
     );
 }
 
-isolated function getBulkFileResponse(http:Response response) returns FHIRBulkFileResponse|FHIRError {
+isolated function getBulkFileResponse(http:Response response) returns FhirBulkFileResponse|FhirError {
     do {
         int statusCode = response.statusCode;
         map<string> responseHeaders = extractHeadersFromResponse(response);
@@ -549,7 +549,7 @@ isolated function getBulkFileResponse(http:Response response) returns FHIRBulkFi
                 dataStream: check response.getByteStream()
             };
         } else {
-            return error FHIRServerError(
+            return error FhirServerError(
                 FHIR_SERVER_ERROR,
                 httpStatusCode = statusCode,
                 'resource = check extractResponseBody(response),
@@ -565,10 +565,10 @@ isolated function extractPath(string fullUrl, string baseUrl) returns string => 
 
 // Replaces FHIR server base url in the FHIR resource with the given url.
 // Precedence is first given to the parameter 'urlRewrite', then to the connector config.
-isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string? fileServerBaseUrl, string? replacementUrl) returns FHIRResponse|FHIRConnectorError {
+isolated function rewriteServerUrl(FhirResponse response, string baseUrl, string? fileServerBaseUrl, string? replacementUrl) returns FhirResponse|FhirConnectorError {
     json|xml data = response.'resource;
 
-    FHIRResponse returnResponse = response.clone();
+    FhirResponse returnResponse = response.clone();
     do {
         var rewrite = isolated function(string inputString) returns string {
             string rewrittenString = regex:replaceAll(inputString, baseUrl, <string>replacementUrl);
