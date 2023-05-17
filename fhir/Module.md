@@ -43,7 +43,7 @@ Invoke the connector operations by passing the required parameters.
 fhir:FHIRResponse|fhir:FHIRError fhirResponse = fhirConnectorObj->getById("Patient", "123456");
 ```
 
-### PKJWT Support
+### Pkjwt Support
 
 In addition to the authentication methods supported by Ballerina, the connector also supports private key JWT authentication, which requires creating the config as following.
 
@@ -56,7 +56,7 @@ In addition to the authentication methods supported by Ballerina, the connector 
 * Create the auth config.
 
     ```ballerina
-    auth:PKJWTAuthConfig ehrSystemAuthConfig = {
+    auth:PkjwtAuthConfig ehrSystemAuthConfig = {
         keyFile: "<path_to_key_file>",
         clientId: "<clientId>",
         tokenEndpoint: "<tokenUrl>"
