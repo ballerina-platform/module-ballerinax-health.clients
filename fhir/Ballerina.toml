@@ -1,8 +1,8 @@
 [package]
 org = "ballerinax"
 name = "health.clients.fhir"
-version = "1.0.3-snapshot"
-distribution = "2201.5.0"
+version = "1.0.3"
+distribution = "2201.6.0"
 authors=["Ballerina"]
 keywords=["Healthcare", "FHIR", "client", "R4"]
 repository="https://github.com/ballerina-platform/module-ballerinax-health.clients"
@@ -13,4 +13,4 @@ observabilityIncluded = true
 [[dependency]]
 org="ballerinax"
 name="health.base"
-version="1.0.2"
+version="1.0.3"
