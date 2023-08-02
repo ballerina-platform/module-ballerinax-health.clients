@@ -28,7 +28,7 @@ jobs:
           args:
             pack
         env:
-          WORKING_DIR: /fhir
+          WORKING_DIR: fhir/
           JAVA_HOME: /usr/lib/jvm/default-jvm
           
 
