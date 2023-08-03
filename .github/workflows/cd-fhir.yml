@@ -58,7 +58,7 @@ jobs:
 
       - name: Push to Prod fhir
         if: github.event.inputs.bal_central_environment == 'PROD'
-        uses: ballerina-platform/ballerina-action@2201.6.0
+        uses: ballerina-platform/ballerina-action@2201.7.0
         with:
           args:
             push
