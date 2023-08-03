@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Ballerina build fhir
-        uses: ballerina-platform/ballerina-action@2201.7.0
+        uses: ballerina-platform/ballerina-action@2201.6.0
         with:
           args:
             pack
@@ -33,7 +33,15 @@ jobs:
 
       - name: Push to staging fhir
         if: github.event.inputs.bal_central_environment == 'STAGE'
-        run: echo "You have chosen staging"
+        uses: ballerina-platform/ballerina-action@2201.6.0
+        with:
+          args:
+            push
+        env:
+          WORKING_DIR: fhir/
+          JAVA_HOME: /usr/lib/jvm/default-jvm
+          BALLERINA_STAGE_CENTRAL: true
+          BALLERINA_CENTRAL_ACCESS_TOKEN: ${{ secrets.BALLERINA_CENTRAL_STAGE_ACCESS_TOKEN }}
 
         
           
