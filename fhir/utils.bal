@@ -565,7 +565,7 @@ isolated function extractPath(string fullUrl, string baseUrl) returns string => 
 
 // Replaces FHIR server base url in the FHIR resource with the given url.
 // Precedence is first given to the parameter 'urlRewrite', then to the connector config.
-isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string? fileServerBaseUrl, string? replacementUrl) returns FHIRResponse|FHIRConnectorError {
+isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string? fileServerBaseUrl = (), string? replacementUrl = ()) returns FHIRResponse|FHIRConnectorError {
     json|xml data = response.'resource;
 
     FHIRResponse returnResponse = response.clone();
@@ -597,3 +597,26 @@ isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string
     }
 }
 
+isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig config) returns http:ClientConfiguration {
+    http:ClientConfiguration httpConfig = {
+        httpVersion: config.httpVersion,
+        http1Settings: config.http1Settings.cloneReadOnly(),
+        http2Settings: config.http2Settings,
+        timeout: config.timeout,
+        forwarded: config.forwarded,
+        poolConfig: config.poolConfig,
+        cache: config.cache,
+        compression: config.compression,
+        circuitBreaker: config.circuitBreaker,
+        retryConfig: config.retryConfig,
+        responseLimits: config.responseLimits,
+        proxy: config.proxy,
+        validation: config.validation,
+        socketConfig: config.socketConfig,
+        secureSocket: config.secureSocket,
+        auth: config is FHIRConnectorConfig 
+                    ? (config.authConfig is http:ClientAuthConfig ? <http:ClientAuthConfig?>config.authConfig : ()) 
+                    : config.auth
+    };
+    return httpConfig;
+}

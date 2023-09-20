@@ -20,13 +20,27 @@ import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
 #
-# + baseURL - FHIR server base URL
-# + mimeType - global MIME type of the return response, can be configured at method level as well
-# + authConfig - Authentication configs that will be used to create the http client
-# + fileServerBaseURL - Bulk export file server base URL
-# + fileServerAuthConfig - Authentication configs that will be used to create the http client for the bulk export file server
-# + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well
-# + replacementURL - Base url of the service to rewrite FHIR server URLs
+# + baseURL - FHIR server base URL  
+# + mimeType - global MIME type of the return response, can be configured at method level as well  
+# + authConfig - Authentication configs that will be used to create the http client  
+# + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well  
+# + replacementURL - Base url of the service to rewrite FHIR server URLs  
+# + bulkFileServerConfig - Bulk export file server configs  
+# + httpVersion - The HTTP version understood by the client  
+# + http1Settings - Configurations related to HTTP/1.x protocol
+# + http2Settings - Configurations related to HTTP/2 protocol  
+# + timeout - The maximum time to wait (in seconds) for a response before closing the connection  
+# + forwarded - The choice of setting `forwarded`/`x-forwarded` header  
+# + poolConfig - Configurations associated with request pooling  
+# + cache - HTTP caching related configurations  
+# + compression - Specifies the way of handling compression (`accept-encoding`) header  
+# + circuitBreaker - Configurations associated with the behaviour of the Circuit Breaker  
+# + retryConfig - Configurations associated with retrying  
+# + responseLimits - Configurations associated with inbound response size limits  
+# + proxy - Proxy server related options  
+# + validation - Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default  
+# + socketConfig - Provides settings related to client socket configuration  
+# + secureSocket - Provides settings related to SSL/TLS
 public type FHIRConnectorConfig record {|
     @display {label: "FHIR server base url"}
     string baseURL;
@@ -34,14 +48,51 @@ public type FHIRConnectorConfig record {|
     MimeType mimeType = FHIR_JSON;
     @display {label: "Authentication configs of the FHIR server"}
     (http:ClientAuthConfig|auth:PKJWTAuthConfig) authConfig?;
-    @display {label: "Bulk export file server base url"}
-    string fileServerBaseURL?;
-    @display {label: "Authentication configs of the bulk export file server"}
-    (http:ClientAuthConfig|auth:PKJWTAuthConfig) fileServerAuthConfig?;
     @display {label: "Rewrite FHIR server URL"}
     boolean urlRewrite = false;
     @display {label: "Base url of the service to rewrite FHIR server URLs"}
     string replacementURL?;
+    @display {label: "Bulk export file server configs"}
+    BulkFileServerConfig bulkFileServerConfig?;
+    @display {label:"The HTTP version understood by the client"}
+    http:HttpVersion httpVersion = http:HTTP_2_0;
+    @display {label:"Configurations related to HTTP/1.x protocol"}
+    http:ClientHttp1Settings http1Settings = {};
+    @display {label:"Configurations related to HTTP/2 protocol"}
+    http:ClientHttp2Settings http2Settings = {};
+    @display {label:"The maximum time to wait (in seconds) for a response before closing the connection"}
+    decimal timeout = 30;
+    @display {label:"The choice of setting `forwarded`/`x-forwarded` header"}
+    string forwarded = "disable";
+    @display {label:"Configurations associated with request pooling"}
+    http:PoolConfiguration? poolConfig = ();
+    @display {label:"HTTP caching related configurations"}
+    http:CacheConfig cache = {};
+    @display {label:"Specifies the way of handling compression (`accept-encoding`) header"}
+    http:Compression compression = http:COMPRESSION_AUTO;
+    @display {label:"Configurations associated with the behaviour of the Circuit Breaker"}
+    http:CircuitBreakerConfig? circuitBreaker = ();
+    @display {label:"Configurations associated with retrying"}
+    http:RetryConfig? retryConfig = ();
+    @display {label:"Configurations associated with inbound response size limits"}
+    http:ResponseLimitConfigs responseLimits = {};
+    @display {label:"Proxy server related options"}
+    http:ProxyConfig? proxy = ();
+    @display {label:"Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default"}
+    boolean validation = true;
+    @display {label:"Provides settings related to client socket configuration"}
+    http:ClientSocketConfig socketConfig = {};
+    @display {label:"Provides settings related to SSL/TLS"}
+    http:ClientSecureSocket? secureSocket = ();
+|};
+
+# Configs of the file server where bulk export files will be stored
+#
+# + fileServerUrl - Bulk export file server base url
+public type BulkFileServerConfig record {|
+    *http:ClientConfiguration;
+    @display {label: "Bulk export file server base url"}
+    string fileServerUrl;
 |};
 
 # Represents a success response coming from the fhir server side

@@ -20,44 +20,60 @@ import ballerinax/health.base.auth;
 # This connector allows you to connect and interact with any FHIR server
 @display {label: "FHIR Client Connector"}
 public isolated client class FHIRConnector {
-    private final FHIRConnectorConfig & readonly connectorConfig;
+    
+    # The base URL of the FHIR server
+    private final string baseUrl;
+
+    # Whether to rewrite the server URLs in the response payloads
+    private final boolean urlRewrite;
+
+    # The replacement URL to be used when rewriting the server URLs
+    private final string? replacementURL;
+
+    # The MIME type of the response
+    private final MimeType mimeType;
+
+    # The HTTP client to be used for FHIR server communication
     private final http:Client httpClient;
+
+    # The PKJWTAuthHandler if the FHIR server is secured with PKJWT
     private final auth:PKJWTAuthHandler? pkjwtHanlder;
+
+    # The HTTP client to be used for bulk file server communication
     private final http:Client bulkFileHttpClient;
-    private final auth:PKJWTAuthHandler? bulkFilePkjwtHanlder;
+
+    # The file server URL of the FHIR server
+    private final string? fileServerUrl;
 
     # Initializes the FHIR client connector
     #
     # + connectorConfig - FHIR connector configurations
     # + httpClientConfig - HTTP client configurations
     public function init(FHIRConnectorConfig connectorConfig) returns error? {
-        self.connectorConfig = connectorConfig.cloneReadOnly();
+        self.baseUrl = connectorConfig.baseURL;
+        self.urlRewrite = connectorConfig.urlRewrite;
+        self.replacementURL = connectorConfig.replacementURL;
+        self.mimeType = connectorConfig.mimeType;
+        
+        // initialize fhir server http client
         (http:ClientAuthConfig|auth:PKJWTAuthConfig)? authConfig = connectorConfig.authConfig;
-        if authConfig is () {
-            self.httpClient = check new (connectorConfig.baseURL);
-            self.pkjwtHanlder = ();
-        } else if authConfig is http:ClientAuthConfig {
-            self.httpClient = check new (connectorConfig.baseURL, {auth: authConfig, httpVersion:http:HTTP_1_1});
+        if authConfig is () || authConfig is http:ClientAuthConfig {
+            self.httpClient = check new (connectorConfig.baseURL, constructHttpConfigs(connectorConfig));
             self.pkjwtHanlder = ();
         } else {
             self.httpClient = check new (connectorConfig.baseURL);
             self.pkjwtHanlder = new (authConfig);
         }
 
-        (http:ClientAuthConfig|auth:PKJWTAuthConfig)? fileServerAuthConfig = connectorConfig.fileServerAuthConfig;
-        if fileServerAuthConfig is () {
-            self.bulkFileHttpClient = connectorConfig.fileServerBaseURL is ()
-                ? self.httpClient
-                : check new (<string>connectorConfig.fileServerBaseURL);
-            self.bulkFilePkjwtHanlder = self.pkjwtHanlder;
-        } else if fileServerAuthConfig is http:ClientAuthConfig {
-            self.bulkFileHttpClient = check new (<string>connectorConfig.fileServerBaseURL, {auth: fileServerAuthConfig, httpVersion:http:HTTP_1_1});
-            self.bulkFilePkjwtHanlder = ();
+        BulkFileServerConfig? bulkFileServerConfig = connectorConfig.bulkFileServerConfig;
+        if bulkFileServerConfig is BulkFileServerConfig {
+            // initialize bulk file server http client
+            self.bulkFileHttpClient = check new (bulkFileServerConfig.fileServerUrl, constructHttpConfigs(bulkFileServerConfig));
+            self.fileServerUrl = bulkFileServerConfig.fileServerUrl;
         } else {
-            self.bulkFileHttpClient = check new (<string>connectorConfig.fileServerBaseURL);
-            self.bulkFilePkjwtHanlder = new (fileServerAuthConfig);
+            self.bulkFileHttpClient = self.httpClient;
+            self.fileServerUrl = ();
         }
-
         if connectorConfig.urlRewrite && connectorConfig.replacementURL == () {
             return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
         }
@@ -76,13 +92,13 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Summary"} SummaryType? summary = ())
             returns FHIRResponse|FHIRError {
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         string requestURL = SLASH + 'type + SLASH + id + setFormatNSummaryParameters(returnMimeType, summary);
         do {
             http:Response response = check self.httpClient->get(requestURL, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getFhirResourceResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -108,14 +124,14 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Summary"} SummaryType? summary = ())
                                                 returns FHIRResponse|FHIRError {
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         string requestURL = SLASH + 'type + SLASH + id + SLASH + _HISTORY + SLASH + 'version
                             + setFormatNSummaryParameters(returnMimeType, summary);
         do {
             http:Response response = check self.httpClient->get(requestURL, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getFhirResourceResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -139,7 +155,7 @@ public isolated client class FHIRConnector {
                                             returns FHIRResponse|FHIRError {
         do {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
-            http:Request request = setCreateUpdatePatchResourceRequest(self.connectorConfig.mimeType, returnPreference, data);
+            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
             string requestURL = SLASH + typeIdInfo.'type;
             string? id = typeIdInfo.id;
             if (id is string) {
@@ -148,8 +164,8 @@ public isolated client class FHIRConnector {
             requestURL += QUESTION_MARK + setFormatParameters(returnMimeType);
             http:Response response = check self.httpClient->put(requestURL, check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -178,12 +194,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                         returns FHIRResponse|FHIRError {
         do {
-            http:Request request = setPatchResourceRequest(self.connectorConfig.mimeType, returnPreference, data, patchContentType);
+            http:Request request = setPatchResourceRequest(self.mimeType, returnPreference, data, patchContentType);
             string requestURL = SLASH + 'type + SLASH + id + QUESTION_MARK + setFormatParameters(returnMimeType);
             http:Response response = check self.httpClient->patch(requestURL, check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -207,8 +223,8 @@ public isolated client class FHIRConnector {
         do {
             http:Response response = check self.httpClient->delete(requestURL, check enrichHeaders({}, self.pkjwtHanlder));
             FHIRResponse result = check getDeleteResourceResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -233,12 +249,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + 'type + SLASH + id + SLASH + _HISTORY + setHistoryParams(parameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -262,12 +278,12 @@ public isolated client class FHIRConnector {
                                             returns FHIRResponse|FHIRError {
         do {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
-            http:Request request = setCreateUpdatePatchResourceRequest(self.connectorConfig.mimeType, returnPreference, data);
+            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
             string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);
             http:Response response = check self.httpClient->post(requestURL, check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -290,12 +306,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + 'type + QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -318,12 +334,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                             returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + 'type + SLASH + _HISTORY + setHistoryParams(parameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -347,12 +363,12 @@ public isolated client class FHIRConnector {
                                             returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + METADATA + QUESTION_MARK + MODE + EQUALS_SIGN + mode +
                             setCapabilityParams(uriParameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, headerMap);
             FHIRResponse result = check getFhirResourceResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -373,12 +389,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = SLASH + _HISTORY + setHistoryParams(parameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -399,12 +415,12 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
         string requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
-        map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -428,11 +444,11 @@ public isolated client class FHIRConnector {
         do {
             boolean validatedResult = check validateBundleData(data, BATCH);
             if validatedResult {
-                http:Request request = setBundleRequest(data, self.connectorConfig.mimeType);
+                http:Request request = setBundleRequest(data, self.mimeType);
                 http:Response response = check self.httpClient->post(requestUrl, check enrichRequest(request, self.pkjwtHanlder));
                 FHIRResponse result = check getBundleResponse(response);
-                if self.connectorConfig.urlRewrite {
-                    return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+                if self.urlRewrite {
+                    return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
                 }
                 return result;
             } else {
@@ -459,11 +475,11 @@ public isolated client class FHIRConnector {
         do {
             boolean validatedResult = check validateBundleData(data, TRANSACTION);
             if validatedResult {
-                http:Request request = setBundleRequest(data, self.connectorConfig.mimeType);
+                http:Request request = setBundleRequest(data, self.mimeType);
                 http:Response response = check self.httpClient->post(requestUrl, check enrichRequest(request, self.pkjwtHanlder));
                 FHIRResponse result = check getBundleResponse(response);
-                if self.connectorConfig.urlRewrite {
-                    return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+                if self.urlRewrite {
+                    return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
                 }
                 return result;
             } else {
@@ -487,15 +503,15 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError? {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string? nextUrl = check extractNextPageUrl(currentBundle, self.connectorConfig.urlRewrite ? <string>self.connectorConfig.replacementURL : self.connectorConfig.baseURL);
+            string? nextUrl = check extractNextPageUrl(currentBundle, self.urlRewrite ? <string>self.replacementURL : self.baseUrl);
             if nextUrl is () {
                 return ();
             }
-            map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+            map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
             http:Response response = check self.httpClient->get(nextUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -515,15 +531,15 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError? {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string? prevUrl = check extractPrevPageUrl(currentBundle, self.connectorConfig.urlRewrite ? <string>self.connectorConfig.replacementURL : self.connectorConfig.baseURL);
+            string? prevUrl = check extractPrevPageUrl(currentBundle, self.urlRewrite ? <string>self.replacementURL : self.baseUrl);
             if prevUrl is () {
                 return ();
             }
-            map<string> headerMap = {[ACCEPT_HEADER] : self.connectorConfig.mimeType};
+            map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
             http:Response response = check self.httpClient->get(prevUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -567,8 +583,8 @@ public isolated client class FHIRConnector {
             };
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBulkExportResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -588,14 +604,14 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string requestUrl = self.connectorConfig.urlRewrite
-                ? extractPath(contentLocation, <string>self.connectorConfig.replacementURL)
-                : extractPath(contentLocation, self.connectorConfig.baseURL);
+            string requestUrl = self.urlRewrite
+                ? extractPath(contentLocation, <string>self.replacementURL)
+                : extractPath(contentLocation, self.baseUrl);
             map<string> headerMap = {};
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBulkExportResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -615,14 +631,14 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string requestUrl = self.connectorConfig.urlRewrite
-                ? extractPath(contentLocation, <string>self.connectorConfig.replacementURL)
-                : extractPath(contentLocation, self.connectorConfig.baseURL);
+            string requestUrl = self.urlRewrite
+                ? extractPath(contentLocation, <string>self.replacementURL)
+                : extractPath(contentLocation, self.baseUrl);
             map<string> headerMap = {};
             http:Response response = check self.httpClient->delete(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBulkExportResponse(response);
-            if self.connectorConfig.urlRewrite {
-                return rewriteServerUrl(result, self.connectorConfig.baseURL, self.connectorConfig.fileServerBaseURL, self.connectorConfig.replacementURL);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
             }
             return result;
         } on fail error e {
@@ -644,12 +660,12 @@ public isolated client class FHIRConnector {
                                         returns FHIRBulkFileResponse|FHIRError {
         do {
             // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string requestUrl = self.connectorConfig.urlRewrite
-                ? extractPath(fileUrl, <string>self.connectorConfig.replacementURL)
-                : extractPath(fileUrl, self.connectorConfig.fileServerBaseURL ?: self.connectorConfig.baseURL);
+            string requestUrl = self.urlRewrite
+                ? extractPath(fileUrl, <string>self.replacementURL)
+                : extractPath(fileUrl, self.fileServerUrl ?: self.baseUrl);
             map<string> otherHeaders = additionalHeaders ?: {};
             map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
-            http:Response response = check self.bulkFileHttpClient->get(requestUrl, check enrichHeaders(headerMap, self.bulkFilePkjwtHanlder));
+            http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
             return getBulkFileResponse(response);
         } on fail error e {
             if e is FHIRError {
