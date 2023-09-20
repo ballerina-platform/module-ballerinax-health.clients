@@ -2,6 +2,10 @@
 
 The connector serves as an interface for interacting with FHIR servers, allowing easy integration of FHIR data.
 
+## Prerequisites
+
+1. Install Ballerina 2201.7.0 or later
+
 ## Usage
 
 Import the package to a Ballerina program.

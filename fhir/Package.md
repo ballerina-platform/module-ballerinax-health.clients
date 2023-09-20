@@ -10,6 +10,7 @@ This package is used to connect to a FHIR server using the FHIRConnector.
 |------------------------|------------------------------------------------|
 | REST API Specification | <https://hl7.org/fhir/http.html>               |
 | Bulk Data Export IG    | <https://hl7.org/fhir/uv/bulkdata/export.html> |
+| Ballerina Version      | 2201.7.0 or later                              |
 
 ### Features and Capabilities
 
