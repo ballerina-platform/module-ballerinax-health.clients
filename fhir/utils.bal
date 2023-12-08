@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/regex;
 import ballerina/url;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
@@ -56,7 +55,7 @@ isolated function getHeaderValueFromRequest(http:Request request, string headerN
 
 isolated function extractContentTypeFromResponse(http:Response response) returns string {
     string contentType = response.getContentType();
-    string[] split = regex:split(contentType, ";");
+    string[] split = re `;`.split(contentType);
     return split[0];
 }
 
@@ -91,7 +90,7 @@ isolated function getFhirResourceResponse(http:Response response) returns FHIRRe
 
 isolated function extractXmlNamespaceNRoot(string element) returns XmlNameSpaceNRoot {
     XmlNameSpaceNRoot data = {namespace: (), rootName: ()};
-    string[] split = regex:split(element, "}");
+    string[] split = re `\}`.split(element);
     if split.length() == 1 {
         data.rootName = split[0];
     } else {
@@ -127,7 +126,7 @@ isolated function setPatchResourceRequest(MimeType mimeType, PreferenceType pref
 }
 
 isolated function extractResourceIdNVid(string url) returns ResourceLocationDetails {
-    string[] splitUrl = regex:split(url, "/").reverse();
+    string[] splitUrl = re `/`.split(url).reverse();
     return <ResourceLocationDetails>{
         resourceId: splitUrl[2],
         'version: splitUrl[0]
@@ -564,18 +563,17 @@ isolated function getBulkFileResponse(http:Response response) returns FHIRBulkFi
 isolated function extractPath(string fullUrl, string baseUrl) returns string => fullUrl.substring(baseUrl.length());
 
 // Replaces FHIR server base url in the FHIR resource with the given url.
-// Precedence is first given to the parameter 'urlRewrite', then to the connector config.
 isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string? fileServerBaseUrl = (), string? replacementUrl = ()) returns FHIRResponse|FHIRConnectorError {
     json|xml data = response.'resource;
 
     FHIRResponse returnResponse = response.clone();
     do {
         var rewrite = isolated function(string inputString) returns string {
-            string rewrittenString = regex:replaceAll(inputString, baseUrl, <string>replacementUrl);
+            string rewrittenString = re `${baseUrl}`.replaceAll(inputString, <string>replacementUrl);
             if fileServerBaseUrl is () {
                 return rewrittenString;
             }
-            return regex:replaceAll(rewrittenString, <string>fileServerBaseUrl, <string>replacementUrl);
+            return re `${<string>fileServerBaseUrl}`.replaceAll(rewrittenString, <string>fileServerBaseUrl);
         };
 
         if data is xml {

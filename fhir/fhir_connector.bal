@@ -50,7 +50,9 @@ public isolated client class FHIRConnector {
     # + connectorConfig - FHIR connector configurations
     # + httpClientConfig - HTTP client configurations
     public function init(FHIRConnectorConfig connectorConfig) returns error? {
-        self.baseUrl = connectorConfig.baseURL;
+        self.baseUrl = connectorConfig.baseURL.endsWith(SLASH) 
+            ? connectorConfig.baseURL.substring(0, connectorConfig.baseURL.length() - 1) 
+            : connectorConfig.baseURL;
         self.urlRewrite = connectorConfig.urlRewrite;
         self.replacementURL = connectorConfig.replacementURL;
         self.mimeType = connectorConfig.mimeType;
