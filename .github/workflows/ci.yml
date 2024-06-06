@@ -76,7 +76,7 @@ jobs:
       - name: Ballerina Build
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          version: ${{ secrets.BAL_VERSION }}
+          version: ${{ vars.BAL_VERSION }}
           args: pack
         env:
           WORKING_DIR: ./${{ matrix.path }}
@@ -99,7 +99,7 @@ jobs:
       - name: Ballerina Test
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          version: ${{ secrets.BAL_VERSION }}
+          version: ${{ vars.BAL_VERSION }}
           args: test --code-coverage
         env:
           WORKING_DIR: ./${{ matrix.path }}
