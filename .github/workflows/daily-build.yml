@@ -18,7 +18,7 @@ jobs:
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          version: ${{ vars.BAL_VERSION }}
+          version: ${{ secrets.BAL_VERSION }}
 
       - name: Build and Test Ballerina Projects
         run: |
