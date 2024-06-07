@@ -9,6 +9,7 @@ on:
 env:
   FHIR_PATTERN: '*/*'
   GITHUB_WORKFLOWS_DIR: '.github'
+  BALLERINA_VERSION: 2201.8.1
 
 jobs:
   setup:
@@ -76,7 +77,7 @@ jobs:
       - name: Ballerina Build
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          version: ${{ vars.BAL_VERSION }}
+          version: $BALLERINA_VERSION
           args: pack
         env:
           WORKING_DIR: ./${{ matrix.path }}
@@ -99,7 +100,7 @@ jobs:
       - name: Ballerina Test
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          version: ${{ vars.BAL_VERSION }}
+          version: $BALLERINA_VERSION
           args: test --code-coverage
         env:
           WORKING_DIR: ./${{ matrix.path }}
