@@ -9,6 +9,7 @@ on:
 env:
   FHIR_PATTERN: '*/*'
   GITHUB_WORKFLOWS_DIR: '.github'
+  BALLERINA_VERSION: 2201.9.0
 
 jobs:
   setup:
@@ -73,13 +74,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Ballerina Build
-        uses: ballerina-platform/ballerina-action@2201.9.0
+      - name: Set Up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          args: pack
-        env:
-          WORKING_DIR: ./${{ matrix.path }}
-          JAVA_HOME: /usr/lib/jvm/default-jvm
+          version: $BALLERINA_VERSION
+
+      - name: Ballerina Build
+        run: |
+          pushd "${{ matrix.path }}"
+          bal pack
+          popd 
 
   test:
     needs: [ setup ]
@@ -95,13 +99,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Ballerina Test
-        uses: ballerina-platform/ballerina-action@2201.9.0
+      - name: Set Up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
-          args: test --code-coverage
-        env:
-          WORKING_DIR: ./${{ matrix.path }}
-          JAVA_HOME: /usr/lib/jvm/default-jvm
+          version: $BALLERINA_VERSION
+
+      - name: Ballerina Test
+        run: |
+          pushd "${{ matrix.path }}"
+          bal test --code-coverage
+          popd
 
       - name: Read Ballerina Test Results
         id: test_results
