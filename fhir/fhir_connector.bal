@@ -17,7 +17,7 @@
 import ballerina/http;
 import ballerinax/health.base.auth;
 
-# This connector allows you to connect and interact with any FHIR server
+# This connector allows you to connect and interact with any FHIR server.
 @display {label: "FHIR Client Connector"}
 public isolated client class FHIRConnector {
     
