@@ -1,7 +1,7 @@
 Ballerina Healthcare Clients
 ==========================
 
-![Daily Build](https://github.com/ballerina-platform/module-ballerinax-health.clients/actions/workflows/daily-build.yml/badge.svg)
+![Daily Build](https://github.com/ballerina-platform/module-ballerinax-health.clients/actions/workflows/daily-build-fhir.yml/badge.svg)
 
 The Ballerina healthcare clients include client connectors that can be used to connect to healthcare-related systems. 
 
