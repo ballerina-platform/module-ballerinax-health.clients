@@ -9,7 +9,7 @@ on:
 env:
   FHIR_PATTERN: '*/*'
   GITHUB_WORKFLOWS_DIR: '.github'
-  BALLERINA_VERSION: 2201.9.0
+  BALLERINA_VERSION: 2201.10.2
 
 jobs:
   setup:
