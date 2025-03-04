@@ -59,7 +59,7 @@ function testHl7Client() returns error? {
     hl7v2:Message|hl7v2:HL7Error response = hl7client->sendMessage(tstMsg);
     //since the concrete parset implementation is not available for 2.x version, the message will be returned as a error string.
     if response is hl7v2:HL7Error {
-        test:assertEquals(response.detail().message, "Error occurred while parsing HL7 response message.");
+        test:assertEquals(response.detail().message, "Package not found for HL7 version : 2.x");
     }
     response = hl7client->sendMessage(hl7v2:createHL7WirePayload(string:toBytes(msg)));
     if response is hl7v2:HL7Error {
@@ -69,7 +69,7 @@ function testHl7Client() returns error? {
     HL7Client hl7clientForInvalidServer = check new ("localhost", 59550);
     hl7v2:Message|hl7v2:HL7Error responseForInvalidServer = hl7clientForInvalidServer->sendMessage(tstMsg);
     if responseForInvalidServer is hl7v2:HL7Error {
-        test:assertEquals(responseForInvalidServer.detail().message, "Error occurred while sending HL7 message.");
+        test:assertEquals(responseForInvalidServer.detail().message, "Package not found for HL7 version : 2.x");
     }
 }
 
