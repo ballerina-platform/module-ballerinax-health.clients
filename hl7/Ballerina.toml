@@ -1,0 +1,11 @@
+[package]
+org = "ballerinax"
+name = "health.clients.hl7"
+version = "1.0.0"
+distribution = "2201.10.2"
+authors=["Ballerina"]
+keywords=["Healthcare", "HL7", "client", "HL7V2"]
+repository="https://github.com/ballerina-platform/module-ballerinax-health.clients"
+
+[build-options]
+observabilityIncluded = true

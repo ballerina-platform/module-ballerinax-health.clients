@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-fhir:
      uses: ./.github/workflows/daily-build-executor.yml
      secrets: inherit
      with:
       working_dir: fhir
+  build-hl7:
+     uses: ./.github/workflows/daily-build-executor.yml
+     secrets: inherit
+     with:
+      working_dir: hl7
       
