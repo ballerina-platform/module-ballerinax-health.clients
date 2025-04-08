@@ -14,7 +14,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/data.jsondata;
 import ballerina/tcp;
 import ballerinax/health.hl7v2;
 
@@ -81,9 +80,9 @@ public isolated client class HL7Client {
                     versionId = hl7Version;
                 } else {
                     json vid = hl7Version.toJson();
-                    VID|jsondata:Error value = jsondata:parseAsType(vid);
+                    VID|error value = vid.cloneWithType();
 
-                    if value is jsondata:Error {
+                    if value is error {
                         return error hl7v2:HL7Error(hl7v2:HL7_V2_MSG_VALIDATION_ERROR, message = "Error occurred while parsing HL7 message version.");
                     }
                     versionId = value.vid1;
