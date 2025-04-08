@@ -83,6 +83,9 @@ dependencies = [
 	{org = "ballerina", name = "lang.value"},
 	{org = "ballerina", name = "observe"}
 ]
+modules = [
+	{org = "ballerina", packageName = "log", moduleName = "log"}
+]
 
 [[package]]
 org = "ballerina"
@@ -99,6 +102,9 @@ version = "1.11.3"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
 	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "ballerina", packageName = "tcp", moduleName = "tcp"}
 ]
 
 [[package]]
@@ -138,8 +144,10 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.clients.hl7"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
+	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "tcp"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "health.hl7v2"}
