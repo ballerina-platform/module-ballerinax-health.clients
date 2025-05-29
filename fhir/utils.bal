@@ -28,6 +28,9 @@ isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? s
     return paramString;
 }
 
+isolated function setOperationName(string operationName, string? id) returns string =>
+    SLASH + (id is string ? id + SLASH : "") + (operationName.startsWith(DOLLAR_SIGN) || operationName.startsWith(ENCODED_DOLLAR_SIGN) ? operationName : DOLLAR_SIGN + operationName);
+
 isolated function setFormatParameters(MimeType? mimeType) returns string =>
     mimeType is () ? "" : string `${_FORMAT}${EQUALS_SIGN}${mimeType}`;
 
@@ -261,6 +264,19 @@ isolated function createSearchFormData(SearchParameters|map<string[]>? qparams) 
         }
     }
     return formData.endsWith(AMPERSAND) ? formData.substring(0, formData.length() - 1) : formData;
+}
+
+isolated function setCallOperationParams(map<string[]>? qparams, MimeType? returnMimeType) returns string {
+    string url = QUESTION_MARK;
+    if (qparams is map<string[]>) {
+        foreach string key in qparams.keys() {
+            foreach string param in qparams.get(key) {
+                url += key + EQUALS_SIGN + param + AMPERSAND;
+            }
+        }
+    }
+    url += setFormatParameters(returnMimeType);
+    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
 }
 
 isolated function setCapabilityParams(map<anydata>? params, MimeType? returnMimeType) returns string {

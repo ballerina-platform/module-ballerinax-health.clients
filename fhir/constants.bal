@@ -73,9 +73,9 @@ public enum BulkExportLevel {
 }
 
 public enum RequestMode {
-    GET = "GET",
-    POST = "POST"
-}
+    POST = "POST",
+    GET = "GET"
+};
 
 # Constant symbols
 const AMPERSAND = "&";
@@ -84,6 +84,8 @@ const QUOTATION_MARK = "\"";
 const QUESTION_MARK = "?";
 const EQUALS_SIGN = "=";
 const COMMA = ",";
+const DOLLAR_SIGN = "$";
+const ENCODED_DOLLAR_SIGN = "%24";
 
 # FHIR  parameters 
 const _FORMAT = "_format";
