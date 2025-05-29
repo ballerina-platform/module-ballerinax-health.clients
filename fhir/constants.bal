@@ -73,9 +73,9 @@ public enum BulkExportLevel {
 }
 
 public enum RequestMode {
-    GET = "GET",
-    POST = "POST"
-}
+    POST = "POST",
+    GET = "GET"
+};
 
 # Constant symbols
 const AMPERSAND = "&";
