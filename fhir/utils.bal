@@ -213,7 +213,7 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
 }
 
 isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
-    string url = "";
+    string url = QUESTION_MARK;
     if (qparams is SearchParameters) {
         foreach string key in qparams.keys() {
             if (qparams.get(key) is string[]) {
@@ -235,7 +235,32 @@ isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeT
         }
     }
     url += setFormatParameters(returnMimeType);
-    return url.endsWith("&") ? url.substring(0, url.length() - 1) : url;
+    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+}
+
+isolated function createSearchFormData(SearchParameters|map<string[]>? qparams) returns string {
+    string formData = "";
+    if (qparams is SearchParameters) {
+        foreach string key in qparams.keys() {
+            if (qparams.get(key) is string[]) {
+                string[] params = <string[]>qparams.get(key);
+                foreach string param in params {
+                    formData += key + EQUALS_SIGN + param + AMPERSAND;
+                }
+            } else {
+                string val = <string>qparams.get(key);
+                formData += key + EQUALS_SIGN + val + AMPERSAND;
+            }
+        }
+    }
+    if (qparams is map<string[]>) {
+        foreach string key in qparams.keys() {
+            foreach string param in qparams.get(key) {
+                formData += key + EQUALS_SIGN + param + AMPERSAND;
+            }
+        }
+    }
+    return formData.endsWith(AMPERSAND) ? formData.substring(0, formData.length() - 1) : formData;
 }
 
 isolated function setCapabilityParams(map<anydata>? params, MimeType? returnMimeType) returns string {

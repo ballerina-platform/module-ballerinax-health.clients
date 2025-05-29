@@ -299,18 +299,34 @@ public isolated client class FHIRConnector {
     # Searches all resources of a particular type
     #
     # + 'type - The name of the resource type  
+    # + mode - The request mode, GET or POST
     # + searchParameters - The search parameters 
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "search resource"}
     remote isolated function search(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Search Parameters"} SearchParameters|map<string[]>? searchParameters = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
-        string requestUrl = SLASH + 'type + QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl = SLASH + 'type;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            
+            if mode == GET {
+                requestUrl += setSearchParams(searchParameters, returnMimeType);
+
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl += SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -410,16 +426,30 @@ public isolated client class FHIRConnector {
     # Searches across all resources types
     #
     # + searchParameters - The search parameters that are common across all resources 
+    # + mode - The request mode, GET or POST
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Search across all resources"}
-    remote isolated function searchAll(@display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+    remote isolated function searchAll(
+            @display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
-        string requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            if mode == GET {
+                requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl = SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);

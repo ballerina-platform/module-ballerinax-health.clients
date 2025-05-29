@@ -72,6 +72,11 @@ public enum BulkExportLevel {
     EXPORT_GROUP = "Group"
 }
 
+public enum RequestMode {
+    GET = "GET",
+    POST = "POST"
+}
+
 # Constant symbols
 const AMPERSAND = "&";
 const SLASH = "/";
@@ -87,8 +92,14 @@ const _HISTORY = "_history";
 const METADATA = "metadata";
 const MODE = "mode";
 
+# Resource paths
+const _SEARCH = "_search";
+
 # Bulk export
 const EXPORT = "$export";
+
+# x-www-form-urlencoded content type
+const APPLICATION_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded";
 
 # Server Status codes
 const STATUS_CODE_OK = 200;
@@ -116,6 +127,7 @@ const PAYLOAD_CONSTRUCTION_ERROR = "Error occurred when constructing the respons
 const MISSING_RES_TYPE = "Resource type not found";
 const REPLACEMENT_URL_NOT_PROVIDED = "URL rewrite is set to true, but replacement URL is not provided";
 const GROUP_ID_NOT_PROVIDED = "The parameter 'groupId' is not provided for Group Bulk Export operation";
+const INTERNATIONAL_401_NOT_SUPPORTED = "International401 parameters are not supported for GET requests";
 
 # XML attributes
 const XML_ID = "id";
