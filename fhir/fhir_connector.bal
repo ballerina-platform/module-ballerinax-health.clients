@@ -706,6 +706,54 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
         }
     }
+
+    # Invokes a custom FHIR operation (e.g., $lookup, $everything) on a resource type.
+    #
+    # This function allows invoking FHIR operations that are not covered by standard CRUD methods, such as `$lookup`, `$everything`, or any other custom operation defined by the FHIR server.
+    #
+    # + 'type - The name of the resource type on which the operation is invoked
+    # + operationName - The name of the FHIR operation (e.g., "$lookup", "$everything")
+    # + mode - The request mode, GET or POST
+    # + id - The logical id of the resource (optional, used for instance-level operations)
+    # + queryParameters - Query parameters to be sent with the operation
+    # + data - Resource data to be sent in the request body (for POST operations)
+    # + returnMimeType - The MIME type of the response
+    # + return - If successful, FhirResponse record else FhirError record
+    @display {label: "Call custom FHIR operation"}
+    remote isolated function callOperation(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Operation Name"} string operationName,
+            @display {label: "Request Mode"} RequestMode mode = GET,
+            @display {label: "Logical ID"} string? id = (),
+            @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
+            @display {label: "Resource data"} json|xml? data = (),
+            @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
+                                    returns FHIRResponse|FHIRError {
+        string requestUrl = SLASH + 'type + setOperationName(operationName, id) + setCallOperationParams(queryParameters, returnMimeType);
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        do {
+            http:Response response;
+            
+            if mode == GET {
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                http:Request req = new;
+                req.setPayload(data, contentType = data is xml ? FHIR_XML : FHIR_JSON);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
+            FHIRResponse result = check getBundleResponse(response);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
+            }
+            return result;
+        } on fail error e {
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+        }
+    }
 }
 
 isolated function enrichHeaders(map<string> headers, auth:PKJWTAuthHandler? handler) returns map<string>|FHIRError {
