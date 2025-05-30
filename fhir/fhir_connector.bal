@@ -299,18 +299,34 @@ public isolated client class FHIRConnector {
     # Searches all resources of a particular type
     #
     # + 'type - The name of the resource type  
+    # + mode - The request mode, GET or POST
     # + searchParameters - The search parameters 
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "search resource"}
     remote isolated function search(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Search Parameters"} SearchParameters|map<string[]>? searchParameters = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
-        string requestUrl = SLASH + 'type + QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl = SLASH + 'type;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            
+            if mode == GET {
+                requestUrl += setSearchParams(searchParameters, returnMimeType);
+
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl += SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -410,16 +426,30 @@ public isolated client class FHIRConnector {
     # Searches across all resources types
     #
     # + searchParameters - The search parameters that are common across all resources 
+    # + mode - The request mode, GET or POST
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Search across all resources"}
-    remote isolated function searchAll(@display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+    remote isolated function searchAll(
+            @display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
-        string requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            if mode == GET {
+                requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl = SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -669,6 +699,54 @@ public isolated client class FHIRConnector {
             map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
             http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
             return getBulkFileResponse(response);
+        } on fail error e {
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+        }
+    }
+
+    # Invokes a custom FHIR operation (e.g., $lookup, $everything) on a resource type.
+    #
+    # This function allows invoking FHIR operations that are not covered by standard CRUD methods, such as `$lookup`, `$everything`, or any other custom operation defined by the FHIR server.
+    #
+    # + 'type - The name of the resource type on which the operation is invoked
+    # + operationName - The name of the FHIR operation (e.g., "$lookup", "$everything")
+    # + mode - The request mode, GET or POST
+    # + id - The logical id of the resource (optional, used for instance-level operations)
+    # + queryParameters - Query parameters to be sent with the operation
+    # + data - Resource data to be sent in the request body (for POST operations)
+    # + returnMimeType - The MIME type of the response
+    # + return - If successful, FhirResponse record else FhirError record
+    @display {label: "Call custom FHIR operation"}
+    remote isolated function callOperation(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Operation Name"} string operationName,
+            @display {label: "Request Mode"} RequestMode mode = GET,
+            @display {label: "Logical ID"} string? id = (),
+            @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
+            @display {label: "Resource data"} json|xml? data = (),
+            @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
+                                    returns FHIRResponse|FHIRError {
+        string requestUrl = SLASH + 'type + setOperationName(operationName, id) + setCallOperationParams(queryParameters, returnMimeType);
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        do {
+            http:Response response;
+            
+            if mode == GET {
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                http:Request req = new;
+                req.setPayload(data, contentType = data is xml ? FHIR_XML : FHIR_JSON);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
+            FHIRResponse result = check getBundleResponse(response);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
+            }
+            return result;
         } on fail error e {
             if e is FHIRError {
                 return e;
