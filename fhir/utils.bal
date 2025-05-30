@@ -29,7 +29,7 @@ isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? s
 }
 
 isolated function setOperationName(string operationName, string? id) returns string =>
-    SLASH + (id is string ? id + SLASH : "") + (operationName.startsWith(DOLLAR_SIGN) || operationName.startsWith(ENCODED_DOLLAR_SIGN) ? operationName : DOLLAR_SIGN + operationName);
+    SLASH + (id is string ? id + SLASH : "") + (operationName.startsWith(DOLLAR_SIGN) || operationName.startsWith(ENCODED_DOLLAR_SIGN) ? operationName : ENCODED_DOLLAR_SIGN + operationName);
 
 isolated function setFormatParameters(MimeType? mimeType) returns string =>
     mimeType is () ? "" : string `${_FORMAT}${EQUALS_SIGN}${mimeType}`;

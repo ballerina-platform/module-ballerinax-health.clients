@@ -263,6 +263,10 @@ function testSearch() returns FHIRError? {
     FHIRResponse result2 = check urlRewriteConnector->search(PATIENT);
     test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testSearchDataSet1JsonUrlRewritten, "Failed to return URL rewritten search result bundle.");
+
+    FHIRResponse result3 = check fhirConnector->search(PATIENT, mode = POST);
+    test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
+    test:assertEquals(result3.'resource, testSearchDataSet1Json, "Failed to return the correct Patient bundle.");
 }
 
 @test:Config {}
@@ -312,6 +316,10 @@ function testSearchAll() returns FHIRError? {
     FHIRResponse result2 = check urlRewriteConnector->searchAll(searchParameters = {_id: ["50"]});
     test:assertEquals(result2.httpStatusCode, http:STATUS_OK, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testSearchDataSet2JsonUrlRewritten, "Failed to return URL rewritten search result bundle.");
+
+    FHIRResponse result3 = check fhirConnector->searchAll(searchParameters = {_id: ["50"]}, mode = POST);
+    test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
+    test:assertEquals(result3.'resource, testSearchDataSet2Json, "Failed to return the correct Patient bundle.");
 }
 
 @test:Config {}
@@ -566,6 +574,38 @@ function testBulkExportFileAccess() returns error? {
     } else {
         test:assertFail("Failed to respond with the correct error");
     }
+}
+
+@test:Config {}
+function testCallOperation() returns FHIRError? {
+    // 1. System-level GET operation: $diff
+    FHIRResponse diffResp = check fhirConnector->callOperation(
+        'type = PATIENT,
+        operationName = "diff",
+        mode = GET
+    );
+    test:assertEquals(diffResp.httpStatusCode, 200, "Failed to return the correct status code for $diff");
+    test:assertEquals(<json>diffResp.'resource, {"result": "diff-operation-success"}, "Failed to return correct $diff response");
+
+    // 2. Instance-level GET operation: $everything
+    FHIRResponse everythingResp = check fhirConnector->callOperation(
+        'type = PATIENT,
+        operationName = "everything",
+        mode = GET,
+        id = "pat1"
+    );
+    test:assertEquals(everythingResp.httpStatusCode, 200, "Failed to return the correct status code for $everything");
+    test:assertEquals(<json>everythingResp.'resource, {"result": "everything-operation-success", "id": "pat1"}, "Failed to return correct $everything response");
+
+    // 3. Instance-level POST operation: $validate
+    FHIRResponse validateResp = check fhirConnector->callOperation(
+        'type = PATIENT,
+        operationName = "validate",
+        mode = POST,
+        id = "pat1",
+        data = testGetResourceDataJson
+    );
+    test:assertEquals(validateResp.httpStatusCode, 200, "Failed to return the correct status code for $validate");
 }
 
 @test:AfterSuite
