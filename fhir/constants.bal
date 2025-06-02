@@ -115,6 +115,7 @@ const PREFER_HEADER = "Prefer";
 const LOCATION = "Location";
 const CONTENT_TYPE = "Content-Type";
 const CONTENT_LOCATION = "Content-Location";
+const IF_NONE_EXISTS = "If-None-Exist";
 
 # Error messages 
 const RESOURCE_ID_NOT_FOUND_IN_DATA = "The provided resource data doesn't contain a id value";

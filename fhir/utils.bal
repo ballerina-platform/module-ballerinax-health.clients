@@ -106,7 +106,7 @@ isolated function extractXmlNamespaceNRoot(string element) returns XmlNameSpaceN
     return data;
 }
 
-isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, PreferenceType preference, json|xml data) returns http:Request {
+isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, PreferenceType preference, json|xml data, string? conditionalUrl = ()) returns http:Request {
     http:Request request = new ();
     request.setHeader(ACCEPT_HEADER, mimeType);
     string preferHeader = "return=" + preference;
@@ -114,6 +114,11 @@ isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, Prefere
     request.setPayload(data);
     string contentType = data is json ? FHIR_JSON : FHIR_XML;
     request.setHeader(CONTENT_TYPE, contentType);
+
+    // for the conditional request, set the If-None-Exist header
+    if conditionalUrl is string {
+        request.setHeader(IF_NONE_EXISTS, conditionalUrl);
+    }
     return request;
 }
 
@@ -215,54 +220,37 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
     }
 }
 
-isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
-    string url = QUESTION_MARK;
+isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams) returns string {
+    string paramString = "";
     if (qparams is SearchParameters) {
         foreach string key in qparams.keys() {
             if (qparams.get(key) is string[]) {
                 string[] params = <string[]>qparams.get(key);
                 foreach string param in params {
-                    url += key + EQUALS_SIGN + param + AMPERSAND;
+                    paramString += key + EQUALS_SIGN + param + AMPERSAND;
                 }
             } else {
                 string val = <string>qparams.get(key);
-                url += key + EQUALS_SIGN + val + AMPERSAND;
+                paramString += key + EQUALS_SIGN + val + AMPERSAND;
             }
         }
-    }
-    if (qparams is map<string[]>) {
+    } else if (qparams is map<string[]>) {
         foreach string key in qparams.keys() {
             foreach string param in qparams.get(key) {
-                url += key + EQUALS_SIGN + param + AMPERSAND;
+                paramString += key + EQUALS_SIGN + param + AMPERSAND;
             }
         }
     }
-    url += setFormatParameters(returnMimeType);
+    return paramString;
+}
+
+isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
+    string url = QUESTION_MARK + buildQueryParamsString(qparams) + setFormatParameters(returnMimeType);
     return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
 }
 
 isolated function createSearchFormData(SearchParameters|map<string[]>? qparams) returns string {
-    string formData = "";
-    if (qparams is SearchParameters) {
-        foreach string key in qparams.keys() {
-            if (qparams.get(key) is string[]) {
-                string[] params = <string[]>qparams.get(key);
-                foreach string param in params {
-                    formData += key + EQUALS_SIGN + param + AMPERSAND;
-                }
-            } else {
-                string val = <string>qparams.get(key);
-                formData += key + EQUALS_SIGN + val + AMPERSAND;
-            }
-        }
-    }
-    if (qparams is map<string[]>) {
-        foreach string key in qparams.keys() {
-            foreach string param in qparams.get(key) {
-                formData += key + EQUALS_SIGN + param + AMPERSAND;
-            }
-        }
-    }
+    string formData = buildQueryParamsString(qparams);
     return formData.endsWith(AMPERSAND) ? formData.substring(0, formData.length() - 1) : formData;
 }
 
@@ -658,4 +646,22 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
                     : config.auth
     };
     return httpConfig;
+}
+
+isolated function getConditionalUrl(string resourceType, ResourceIdentifier|SearchParameters|map<string[]> conditionalLogic) returns string|error {
+    string query = "";
+
+    if conditionalLogic is ResourceIdentifier {
+        string encodedSystem = check url:encode(conditionalLogic.system, "UTF-8");
+        string encodedValue = check url:encode(conditionalLogic.value, "UTF-8");
+        query = "identifier=" + encodedSystem + "%7C" + encodedValue;
+    } else if conditionalLogic is SearchParameters|map<string[]> {
+        query = buildQueryParamsString(conditionalLogic);
+    }
+
+    if query == "" {
+        return error("No conditional logic provided for the resource type: " + resourceType);
+    }
+
+    return resourceType + QUESTION_MARK + query;
 }

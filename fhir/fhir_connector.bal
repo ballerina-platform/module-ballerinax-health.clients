@@ -267,20 +267,32 @@ public isolated client class FHIRConnector {
         }
     }
 
-    # Creates a new resource
+# Creates a new resource
     #
     # + data - Resource data  
+    # + onCondition - Condition for a conditional create operation.  
+    #   - To perform a conditional create, you can:
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345"`).
+    #     - Or, provide conditional parameters as a `ResourceIdentifier`, `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    #   - If not specified, a normal create is performed.
     # + returnMimeType - The MIME type of the response 
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Create resource"}
     remote isolated function create(@display {label: "Resource data"} json|xml data,
+            @display {label: "Condition for a Conditional Create"} OnCondition? onCondition = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                             returns FHIRResponse|FHIRError {
         do {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
-            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
+            string? conditionalUrl = ();
+            if onCondition is string {
+                conditionalUrl = self.baseUrl + onCondition;
+            } else if onCondition !is () {
+                conditionalUrl = self.baseUrl + check getConditionalUrl(typeIdInfo.'type, onCondition);
+            }
+            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
             string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);
             http:Response response = check self.httpClient->post(requestURL, check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);

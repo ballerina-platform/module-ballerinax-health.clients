@@ -217,6 +217,29 @@ public type BulkExportParameters record {
     *BaseBulkExportParameters;
 };
 
+# Represents a FHIR resource identifier, typically used for conditional create, update, or delete operations.
+#
+# + system - The namespace or system that issues the identifier (e.g., a URI)
+# + value - The actual identifier value assigned to the resource
+type ResourceIdentifier record {
+    string system;
+    string value;
+};
+
+# Represents the possible types that can be used as a condition in conditional FHIR interactions.
+#
+# Used in conditional create, update, or delete operations.
+# Can be one of:
+# - `ResourceIdentifier`: A structured identifier with system and value.
+# - `SearchParameters`: A set of search parameters to match resources.
+# - `map<string[]>`: A map of key-value pairs (with array values) representing search conditions.
+# - `string`: The conditional URL directly as a string (e.g., `"identifier=12345"`).
+#
+# For a conditional create, update or delete, you can:
+# - Provide the conditional URL directly as a string for the `onCondition` parameter.
+# - Or, provide conditional parameters as a `ResourceIdentifier`, `SearchParameters`, or `map<string[]>` to construct the conditional URL.
+type OnCondition ResourceIdentifier|SearchParameters|map<string[]>|string;
+
 type ResourceTypeNId record {|
     string 'type;
     string? id;
