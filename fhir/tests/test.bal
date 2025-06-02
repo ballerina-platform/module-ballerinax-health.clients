@@ -251,6 +251,20 @@ function testCreate() returns FHIRError? {
     FHIRResponse result2 = check fhirConnector->create(testUpdateResourceDataXml, returnPreference = REPRESENTATION);
     test:assertEquals(result2.httpStatusCode, 201, "Failed to return the correct status code");
     test:assertEquals(result2.'resource, testGetResourceDataJson, "Failed to return location details.");
+
+    // Conditional create using a conditional URL
+    FHIRResponse result3 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = "url=example.com/pat1");
+    test:assertEquals(result3.httpStatusCode, 201, "Failed to return the correct status code for conditional create by URL");
+
+    // Conditional create using a map<string[]>
+    map<string[]> condMap = {url: ["example.com/pat1"]};
+    FHIRResponse result4 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = condMap);
+    test:assertEquals(result4.httpStatusCode, 201, "Failed to return the correct status code for conditional create by map<string[]>");
+
+    // Conditional create using a SearchParameters record
+    SearchParameters condParams = {_id: "pat1"};
+    FHIRResponse result5 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = condParams);
+    test:assertEquals(result5.httpStatusCode, 201, "Failed to return the correct status code for conditional create by SearchParameters");   
 }
 
 @test:Config {}

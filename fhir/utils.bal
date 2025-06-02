@@ -116,7 +116,7 @@ isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, Prefere
     string contentType = data is json ? FHIR_JSON : FHIR_XML;
     request.setHeader(CONTENT_TYPE, contentType);
 
-    // for the conditional request, set the If-None-Exist header
+    // for the conditional create, set the If-None-Exist header
     if conditionalUrl is string {
         request.setHeader(IF_NONE_EXISTS, conditionalUrl);
     }
@@ -246,7 +246,7 @@ isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams
             }
         }
     }
-    return paramString.endsWith(AMPERSAND) || paramString.endsWith(QUESTION_MARK) ? paramString.substring(0, paramString.length() - 1) : paramString;
+    return sanitizeRequestUrl(paramString);
 }
 
 isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
@@ -267,7 +267,7 @@ isolated function setCallOperationParams(map<string[]>? qparams, MimeType? retur
         }
     }
     url += setFormatParameters(returnMimeType);
-    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+    return sanitizeRequestUrl(url);
 }
 
 isolated function setCapabilityParams(map<anydata>? params, MimeType? returnMimeType) returns string {
@@ -536,9 +536,7 @@ isolated function setBulkExportParams(BulkExportParameters params) returns strin
             paramString += string `${key}${EQUALS_SIGN}${encodedValue}${AMPERSAND}`;
         }
     }
-    return paramString.endsWith(AMPERSAND)
-        ? paramString.substring(0, paramString.length() - 1)
-        : paramString;
+    return sanitizeRequestUrl(paramString);
 }
 
 isolated function getBulkExportResponse(http:Response response) returns FHIRResponse|FHIRError {
@@ -651,18 +649,10 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
     return httpConfig;
 }
 
-isolated function getConditionalUrl(string resourceType, OnCondition conditionalLogic) returns string|error {
-    string query = "";
+isolated function getConditionalUrl(SearchParameters|map<string[]> conditionalLogic) returns string {
+    return buildQueryParamsString(conditionalLogic);
+}
 
-    if conditionalLogic is ResourceIdentifier {
-        string encodedSystem = check url:encode(conditionalLogic.system, "UTF-8");
-        string encodedValue = check url:encode(conditionalLogic.value, "UTF-8");
-        query = "identifier=" + encodedSystem + "%7C" + encodedValue;
-    } else if conditionalLogic is SearchParameters|map<string[]> {
-        query = buildQueryParamsString(conditionalLogic);
-    } else {
-        query = check url:encode(conditionalLogic.toString(), "UTF-8");
-    }
-
-    return resourceType + QUESTION_MARK + query;
+isolated function sanitizeRequestUrl(string url) returns string {
+    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
 }
