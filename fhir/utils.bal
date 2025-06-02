@@ -15,6 +15,7 @@
 // under the License.
 
 import ballerina/http;
+import ballerina/log;
 import ballerina/url;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
@@ -227,31 +228,33 @@ isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams
             if (qparams.get(key) is string[]) {
                 string[] params = <string[]>qparams.get(key);
                 foreach string param in params {
-                    paramString += key + EQUALS_SIGN + param + AMPERSAND;
+                    paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
                 }
             } else {
                 string val = <string>qparams.get(key);
-                paramString += key + EQUALS_SIGN + val + AMPERSAND;
+                paramString += key + EQUALS_SIGN + check url:encode(val, "UTF-8") + AMPERSAND;
             }
+        } on fail var e {
+        	log:printError(string `Error encoding parameter value`, e);
         }
     } else if (qparams is map<string[]>) {
         foreach string key in qparams.keys() {
             foreach string param in qparams.get(key) {
-                paramString += key + EQUALS_SIGN + param + AMPERSAND;
+                paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
+            } on fail var e{
+            	log:printError(string `Error encoding parameter value: ${param}`, e);
             }
         }
     }
-    return paramString;
+    return paramString.endsWith(AMPERSAND) || paramString.endsWith(QUESTION_MARK) ? paramString.substring(0, paramString.length() - 1) : paramString;
 }
 
 isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
-    string url = QUESTION_MARK + buildQueryParamsString(qparams) + setFormatParameters(returnMimeType);
-    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+    return QUESTION_MARK + buildQueryParamsString(qparams) + setFormatParameters(returnMimeType);
 }
 
 isolated function createSearchFormData(SearchParameters|map<string[]>? qparams) returns string {
-    string formData = buildQueryParamsString(qparams);
-    return formData.endsWith(AMPERSAND) ? formData.substring(0, formData.length() - 1) : formData;
+    return buildQueryParamsString(qparams);
 }
 
 isolated function setCallOperationParams(map<string[]>? qparams, MimeType? returnMimeType) returns string {
@@ -648,7 +651,7 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
     return httpConfig;
 }
 
-isolated function getConditionalUrl(string resourceType, ResourceIdentifier|SearchParameters|map<string[]> conditionalLogic) returns string|error {
+isolated function getConditionalUrl(string resourceType, OnCondition conditionalLogic) returns string|error {
     string query = "";
 
     if conditionalLogic is ResourceIdentifier {
@@ -657,10 +660,8 @@ isolated function getConditionalUrl(string resourceType, ResourceIdentifier|Sear
         query = "identifier=" + encodedSystem + "%7C" + encodedValue;
     } else if conditionalLogic is SearchParameters|map<string[]> {
         query = buildQueryParamsString(conditionalLogic);
-    }
-
-    if query == "" {
-        return error("No conditional logic provided for the resource type: " + resourceType);
+    } else {
+        query = check url:encode(conditionalLogic.toString(), "UTF-8");
     }
 
     return resourceType + QUESTION_MARK + query;

@@ -238,7 +238,7 @@ type ResourceIdentifier record {
 # For a conditional create, update or delete, you can:
 # - Provide the conditional URL directly as a string for the `onCondition` parameter.
 # - Or, provide conditional parameters as a `ResourceIdentifier`, `SearchParameters`, or `map<string[]>` to construct the conditional URL.
-type OnCondition ResourceIdentifier|SearchParameters|map<string[]>|string;
+public type OnCondition ResourceIdentifier|SearchParameters|map<string[]>|string;
 
 type ResourceTypeNId record {|
     string 'type;

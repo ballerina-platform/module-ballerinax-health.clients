@@ -287,10 +287,8 @@ public isolated client class FHIRConnector {
         do {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
             string? conditionalUrl = ();
-            if onCondition is string {
-                conditionalUrl = self.baseUrl + onCondition;
-            } else if onCondition !is () {
-                conditionalUrl = self.baseUrl + check getConditionalUrl(typeIdInfo.'type, onCondition);
+            if onCondition is OnCondition {
+                conditionalUrl = self.baseUrl + SLASH + check getConditionalUrl(typeIdInfo.'type, onCondition);
             }
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
             string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);
