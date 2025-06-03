@@ -166,7 +166,12 @@ public isolated client class FHIRConnector {
             
             string requestURL;
             if onCondition is string {
-                requestURL = onCondition;
+                if matchesQueryPattern(onCondition) {
+                    requestURL = onCondition;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
+                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                }
             } else {
                 ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
                 requestURL = SLASH + typeIdInfo.'type;
@@ -226,7 +231,12 @@ public isolated client class FHIRConnector {
 
             string requestURL;
             if onCondition is string {
-                requestURL = onCondition;
+                if matchesQueryPattern(onCondition) {
+                    requestURL = onCondition;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
+                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                }
             } else {
                 requestURL = SLASH + 'type;
                 if (id is string) {
@@ -277,12 +287,21 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for delete operation.`));
         }
         string requestURL = SLASH + 'type;
-        if id is string {
-            requestURL += SLASH + id;
-        }
-        if onCondition is SearchParameters|map<string[]> {
-            requestURL += QUESTION_MARK + getConditionalUrl(onCondition);
-        }
+        if onCondition is string {
+            if matchesQueryPattern(onCondition) {
+                requestURL = onCondition;
+            } else {
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
+                             errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+            }
+        } else {
+            if id is string {
+                requestURL += SLASH + id;
+            }
+            if onCondition is SearchParameters|map<string[]> {
+                requestURL += QUESTION_MARK + getConditionalUrl(onCondition);
+            }
+        }        
         do {
             http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), check enrichHeaders({}, self.pkjwtHanlder));
             FHIRResponse result = check getDeleteResourceResponse(response);
@@ -350,8 +369,13 @@ public isolated client class FHIRConnector {
             string? conditionalUrl = ();
             if onCondition is SearchParameters|map<string[]> {
                 conditionalUrl = self.baseUrl + SLASH + typeIdInfo.'type + QUESTION_MARK + getConditionalUrl(onCondition);
-            } else {
-                conditionalUrl = onCondition;
+            } else if onCondition is string {
+                if matchesQueryPattern(onCondition) {
+                    conditionalUrl = onCondition;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
+                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                }
             }
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
             string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);

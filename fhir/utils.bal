@@ -17,6 +17,7 @@
 import ballerina/http;
 import ballerina/log;
 import ballerina/url;
+import ballerina/regex;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
     string paramString = "";
@@ -655,4 +656,10 @@ isolated function getConditionalUrl(SearchParameters|map<string[]> conditionalLo
 
 isolated function sanitizeRequestUrl(string url) returns string {
     return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+}
+
+isolated function matchesQueryPattern(string input) returns boolean {
+    // Regex: prefix?key=value[&key=value]*
+    string pattern = "^[^?]+\\?[^=&]+=[^=&]+(&[^=&]+=[^=&]+)*$";
+    return regex:matches(input, pattern);
 }

@@ -104,6 +104,21 @@ http:Service FhirMockService = service object {
         check response.setContentType(FHIR_JSON);
         return response;
     }
+    
+    @http:ResourceConfig {
+         consumes: ["application/fhir+json", "application/fhir+xml"]
+    }
+    resource function put [string 'type](http:Request payload) returns http:Response {
+        http:Response response = new ();
+        string? url = payload.getQueryParamValue("url");
+        if url is string && url == "exists" {
+            response.statusCode = http:STATUS_OK;
+        } else {
+            response.statusCode = http:STATUS_NOT_FOUND;
+            response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+        }
+        return response;
+    }
 
     @http:ResourceConfig {
         consumes: [
@@ -133,9 +148,29 @@ http:Service FhirMockService = service object {
         return response;
     }
 
-    resource function delete [string 'type]/[string id]() returns http:Response {
+    resource function delete [string 'type]/[string id](http:Request payload) returns http:Response {
         http:Response response = new ();
         if id == "pat1" {
+            string? url = payload.getQueryParamValue("url");
+            if (url is string && url == "exists") || url is () {
+                response.statusCode = http:STATUS_NO_CONTENT;
+            } else {
+                response.statusCode = http:STATUS_NOT_FOUND;
+                response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+            }
+            // response.statusCode = http:STATUS_NO_CONTENT;
+        } else {
+            response.statusCode = http:STATUS_NOT_FOUND;
+            response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+        }
+        return response;
+    }
+
+    resource function delete [string 'type](http:Request payload) returns http:Response {
+        http:Response response = new ();
+        string? url = payload.getQueryParamValue("url");
+        string? id = payload.getQueryParamValue("_id");
+        if url is string && url == "exists" || id is string && id == "pat1" {
             response.statusCode = http:STATUS_NO_CONTENT;
         } else {
             response.statusCode = http:STATUS_NOT_FOUND;
