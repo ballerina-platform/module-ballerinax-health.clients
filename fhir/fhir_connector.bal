@@ -174,20 +174,13 @@ public isolated client class FHIRConnector {
                 }
             } else {
                 ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
-                requestURL = SLASH + typeIdInfo.'type;
                 string? id = typeIdInfo.id;
-                if (id is string) {
-                    requestURL += SLASH + id;
-                }
-                requestURL += QUESTION_MARK;
-                if onCondition is SearchParameters|map<string[]> {
-                    requestURL += getConditionalUrl(onCondition) + AMPERSAND;
-                }
+                requestURL = string `${SLASH}${typeIdInfo.'type}${id is string ? SLASH + id : ""}${QUESTION_MARK}${onCondition is SearchParameters|map<string[]> ? getConditionalUrl(onCondition) + AMPERSAND : ""}`;
                 if id is () && onCondition is () {
                     return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for update operation.`));
                 }
             }
-            requestURL += setFormatParameters(returnMimeType);
+            requestURL = string `${requestURL}${setFormatParameters(returnMimeType)}`;
             
             http:Response response = check self.httpClient->put(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
@@ -238,21 +231,13 @@ public isolated client class FHIRConnector {
                                  errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
                 }
             } else {
-                requestURL = SLASH + 'type;
-                if (id is string) {
-                    requestURL += SLASH + id;
-                }
-                requestURL += QUESTION_MARK;
-
-                if onCondition is SearchParameters|map<string[]> {
-                    requestURL += getConditionalUrl(onCondition) + AMPERSAND;
-                }
+                requestURL = string `${SLASH}${'type}${id is string ? SLASH + id : ""}${QUESTION_MARK}${onCondition is SearchParameters|map<string[]> ? getConditionalUrl(onCondition) + AMPERSAND : ""}`;
 
                 if id is () && onCondition is () {
                     return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for patch operation.`));
                 }
             }
-            requestURL += setFormatParameters(returnMimeType);
+            requestURL = string `${requestURL}${setFormatParameters(returnMimeType)}`;
 
             http:Response response = check self.httpClient->patch(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
@@ -286,7 +271,7 @@ public isolated client class FHIRConnector {
         if id is () && onCondition is () {
             return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for delete operation.`));
         }
-        string requestURL = SLASH + 'type;
+        string requestURL;
         if onCondition is string {
             if matchesQueryPattern(onCondition) {
                 requestURL = onCondition;
@@ -295,11 +280,10 @@ public isolated client class FHIRConnector {
                              errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
             }
         } else {
-            if id is string {
-                requestURL += SLASH + id;
-            }
-            if onCondition is SearchParameters|map<string[]> {
-                requestURL += QUESTION_MARK + getConditionalUrl(onCondition);
+            requestURL = string `${SLASH}${'type}${id is string ? SLASH + id : ""}${onCondition is SearchParameters|map<string[]> ? QUESTION_MARK + getConditionalUrl(onCondition) : ""}`;
+
+            if id is () && onCondition is () {
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for delete operation.`));
             }
         }        
         do {
@@ -368,7 +352,7 @@ public isolated client class FHIRConnector {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
             string? conditionalUrl = ();
             if onCondition is SearchParameters|map<string[]> {
-                conditionalUrl = self.baseUrl + SLASH + typeIdInfo.'type + QUESTION_MARK + getConditionalUrl(onCondition);
+                conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${getConditionalUrl(onCondition)}`;
             } else if onCondition is string {
                 if matchesQueryPattern(onCondition) {
                     conditionalUrl = onCondition;
@@ -378,7 +362,7 @@ public isolated client class FHIRConnector {
                 }
             }
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
-            string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);
+            string requestURL = string `${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${setFormatParameters(returnMimeType)}`;
             http:Response response = check self.httpClient->post(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
             if self.urlRewrite {
