@@ -309,17 +309,17 @@ public isolated client class FHIRConnector {
             @display {label: "Search Parameters"} SearchParameters|map<string[]>? searchParameters = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
-        string requestUrl = SLASH + 'type;
+        string requestUrl;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response;
             
             if mode == GET {
-                requestUrl += setSearchParams(searchParameters, returnMimeType);
+                requestUrl = string `${SLASH}${'type}${setSearchParams(searchParameters, returnMimeType)}`;
 
                 response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             } else {
-                requestUrl += SLASH + _SEARCH + setSearchParams((), returnMimeType);
+                requestUrl = string `${SLASH}${'type}${SLASH}${_SEARCH}${setSearchParams((), returnMimeType)}`;
 
                 http:Request req = new;
                 req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
@@ -440,10 +440,10 @@ public isolated client class FHIRConnector {
         do {
             http:Response response;
             if mode == GET {
-                requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+                requestUrl = string `${QUESTION_MARK}${setSearchParams(searchParameters, returnMimeType)}`;
                 response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             } else {
-                requestUrl = SLASH + _SEARCH + setSearchParams((), returnMimeType);
+                requestUrl = string `${SLASH}${_SEARCH}${setSearchParams((), returnMimeType)}`;
 
                 http:Request req = new;
                 req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
@@ -728,7 +728,7 @@ public isolated client class FHIRConnector {
             @display {label: "Resource data"} json|xml? data = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
-        string requestUrl = SLASH + 'type + setOperationName(operationName, id) + setCallOperationParams(queryParameters, returnMimeType);
+        string requestUrl = string `${SLASH}${'type}${setOperationName(operationName, id)}${setCallOperationParams(queryParameters, returnMimeType)}`;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
             http:Response response;
