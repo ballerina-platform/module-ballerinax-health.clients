@@ -16,6 +16,7 @@
 
 import ballerina/http;
 import ballerinax/health.base.auth;
+import ballerina/log;
 
 # This connector allows you to connect and interact with any FHIR server
 @display {label: "FHIR Client Connector"}
@@ -333,6 +334,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -456,6 +458,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -748,6 +751,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
