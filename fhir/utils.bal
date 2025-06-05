@@ -650,7 +650,7 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
     return httpConfig;
 }
 
-isolated function getConditionalUrl(SearchParameters|map<string[]> conditionalLogic) returns string {
+isolated function getConditionalParams(SearchParameters|map<string[]> conditionalLogic) returns string {
     return buildQueryParamsString(conditionalLogic);
 }
 
@@ -659,7 +659,7 @@ isolated function sanitizeRequestUrl(string url) returns string {
 }
 
 isolated function matchesQueryPattern(string input) returns boolean {
-    // Regex: prefix?key=value[&key=value]*
-    string pattern = "^[^?]+\\?[^=&]+=[^=&]+(&[^=&]+=[^=&]+)*$";
+    // Regex: key=value[&key=value]*
+    string pattern = "^[^=&?]+=[^=&]+(?:&[^=&?]+=[^=&]+)*$";
     return regex:matches(input, pattern);
 }

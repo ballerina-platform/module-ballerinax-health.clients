@@ -274,7 +274,7 @@ const PAYLOAD_CONSTRUCTION_ERROR = "Error occurred when constructing the respons
 const MISSING_RES_TYPE = "Resource type not found";
 const REPLACEMENT_URL_NOT_PROVIDED = "URL rewrite is set to true, but replacement URL is not provided";
 const GROUP_ID_NOT_PROVIDED = "The parameter 'groupId' is not provided for Group Bulk Export operation";
-const MISSING_ID_OR_CONDITION = "Either 'id' or 'condition' must be provided for the interaction";
+const MISSING_ID = "'id' is a mandatory parameter for the interaction";
 const INVALID_CONDITIONAL_URL = "The provided conditional URL is invalid";
 
 # XML attributes

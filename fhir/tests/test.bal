@@ -177,12 +177,12 @@ function testUpdate() returns FHIRError? {
     test:assertEquals(result6.'resource, locationDetails, "Failed to return location details for conditional update (resource not found).");
 
     // invalid conditional URL
-    FHIRResponse|FHIRError result7 = fhirConnector->update(testUpdateResourceDataJson, onCondition = "?url=invalid");
+    FHIRResponse|FHIRError result7 = fhirConnector->update(testUpdateResourceDataJson, onCondition = "example?url=invalid");
     if result7 is FHIRError {
         if result7 is FHIRConnectorError {
             error? e = result7.detail().errorDetails;
             if (e is error) {
-                test:assertEquals(e.message(), "Conditional URL should be in the format \"ResourceType?searchParam=value\".", "Failed to return invalid conditional URL error");
+                test:assertEquals(e.message(), "Conditional URL should be in the format \"searchParam=value\".", "Failed to return invalid conditional URL error");
             }
 
         } else {
@@ -196,12 +196,12 @@ function testUpdate() returns FHIRError? {
 @test:Config {}
 function testPatch() returns FHIRError? {
     // resource exists
-    FHIRResponse result1 = check fhirConnector->patch(PATIENT, testPatchResourceDataXml, id = "pat1", patchContentType = FHIR_XML);
+    FHIRResponse result1 = check fhirConnector->patch(PATIENT, testPatchResourceDataXml, "pat1", patchContentType = FHIR_XML);
     test:assertEquals(result1.httpStatusCode, 200, "Failed to return the correct status code");
     test:assertEquals(result1.'resource, locationDetails, "Failed to return location details.");
 
     // resource doesn't exists
-    FHIRResponse|FHIRError result2 = fhirConnector->patch(PATIENT, testPatchResourceDataXml, id = "pat2", patchContentType = FHIR_XML);
+    FHIRResponse|FHIRError result2 = fhirConnector->patch(PATIENT, testPatchResourceDataXml, "pat2", patchContentType = FHIR_XML);
     if result2 is FHIRError {
         if result2 is FHIRServerError {
             test:assertEquals(result2.detail().httpStatusCode, 404, "Failed to return the correct status code");
@@ -239,16 +239,16 @@ function testDelete() returns FHIRError? {
     }
 
     // Conditional delete using a conditional URL (resource exists)
-    FHIRResponse result3 = check fhirConnector->delete(PATIENT, onCondition = { "url": "exists" });
+    FHIRResponse result3 = check fhirConnector->delete(PATIENT, "pat1", onCondition = { "url": "exists" });
     test:assertEquals(result3.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
 
     // Conditional delete using search parameters (resource exists)
     SearchParameters condParams = {_id: "pat1"};
-    FHIRResponse result5 = check fhirConnector->delete(PATIENT, onCondition = condParams);
+    FHIRResponse result5 = check fhirConnector->delete(PATIENT, "pat1", onCondition = condParams);
     test:assertEquals(result5.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
 
     // Conditional delete using a conditional URL (resource does not exist)
-    FHIRResponse|FHIRError result4 = fhirConnector->delete(PATIENT, onCondition = { "url": "notfound" });
+    FHIRResponse|FHIRError result4 = fhirConnector->delete(PATIENT, "pat1", onCondition = { "url": "notfound" });
     if result4 is FHIRError {
         if result4 is FHIRServerError {
             test:assertEquals(result4.detail().httpStatusCode, 404, "Failed to return the correct status code for conditional delete (resource not found)");
@@ -302,7 +302,7 @@ function testCreate() returns FHIRError? {
     test:assertEquals(result2.'resource, testGetResourceDataJson, "Failed to return location details.");
 
     // Conditional create using a conditional URL
-    FHIRResponse result3 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = PATIENT + "?url=example.com");
+    FHIRResponse result3 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = PATIENT + "url=example.com&id=pat1");
     test:assertEquals(result3.httpStatusCode, 201, "Failed to return the correct status code for conditional create by URL");
 
     // Conditional create using a map<string[]>

@@ -144,12 +144,12 @@ public isolated client class FHIRConnector {
         }
     }
 
-    # Updates an existing resource or creates a new resource if the resource doesn't exist.
+    # Updates an existing resource or creates a new resource if the resource doesn't exists 
     #
     # + data - Resource data  
     # + onCondition - Condition for a conditional update operation.  
     #   - To perform a conditional update, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"Patient?identifier=12345"`).
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
     #     - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>`, which will be used to construct the conditional URL.
     #   - If not specified, a normal update is performed.
     # + returnMimeType - The MIME type of the response 
@@ -163,24 +163,27 @@ public isolated client class FHIRConnector {
                                             returns FHIRResponse|FHIRError {
         do {
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
+
+            ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
+            string? id = typeIdInfo.id;
+
+            if id is () {
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID, errorDetails = error(string `Either ' must be provided for update operation.`));
+            }
             
             string requestURL;
+            string searchParams = "";
             if onCondition is string {
                 if matchesQueryPattern(onCondition) {
-                    requestURL = onCondition;
+                    searchParams = onCondition;
                 } else {
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
-                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
-            } else {
-                ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
-                string? id = typeIdInfo.id;
-                requestURL = string `${SLASH}${typeIdInfo.'type}${id is string ? SLASH + id : ""}${QUESTION_MARK}${onCondition is SearchParameters|map<string[]> ? getConditionalUrl(onCondition) + AMPERSAND : ""}`;
-                if id is () && onCondition is () {
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for update operation.`));
-                }
+            } else if onCondition is SearchParameters|map<string[]> {
+                searchParams = getConditionalParams(onCondition);
             }
-            requestURL = string `${requestURL}${setFormatParameters(returnMimeType)}`;
+
+            requestURL = string `${SLASH}${typeIdInfo.'type}${SLASH}${<string>id}${QUESTION_MARK}${searchParams}${AMPERSAND}${setFormatParameters(returnMimeType)}`;
             
             http:Response response = check self.httpClient->put(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
@@ -203,7 +206,7 @@ public isolated client class FHIRConnector {
     # + data - Resource data  
     # + onCondition - Condition for a conditional patch operation.  
     #   - To perform a conditional patch, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"Patient?identifier=12345"`).
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
     #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
     #   - If not specified, a normal patch is performed.
     # + returnMimeType - The MIME type of the response  
@@ -213,7 +216,7 @@ public isolated client class FHIRConnector {
     @display {label: "Patch resource"}
     remote isolated function patch(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Resource data"} json|xml data,
-            @display {label: "Logical ID"} string? id = (),
+            @display {label: "Logical ID"} string id,
             @display {label: "Condition for a Conditional Patch"} OnCondition? onCondition = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Patch Content Type"} MimeType|PatchContentType? patchContentType = (),
@@ -223,21 +226,18 @@ public isolated client class FHIRConnector {
             http:Request request = setPatchResourceRequest(self.mimeType, returnPreference, data, patchContentType);
 
             string requestURL;
+            string searchParams = "";
             if onCondition is string {
                 if matchesQueryPattern(onCondition) {
-                    requestURL = onCondition;
+                    searchParams = onCondition;
                 } else {
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
-                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
-            } else {
-                requestURL = string `${SLASH}${'type}${id is string ? SLASH + id : ""}${QUESTION_MARK}${onCondition is SearchParameters|map<string[]> ? getConditionalUrl(onCondition) + AMPERSAND : ""}`;
-
-                if id is () && onCondition is () {
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for patch operation.`));
-                }
+            } else if onCondition is SearchParameters|map<string[]> {
+                searchParams = getConditionalParams(onCondition);
             }
-            requestURL = string `${requestURL}${setFormatParameters(returnMimeType)}`;
+
+            requestURL = string `${SLASH}${'type}${SLASH}${<string>id}${QUESTION_MARK}${searchParams}${AMPERSAND}${setFormatParameters(returnMimeType)}`;
 
             http:Response response = check self.httpClient->patch(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
@@ -259,33 +259,27 @@ public isolated client class FHIRConnector {
     # + id - The logical id of the resource 
     # + onCondition - Condition for a conditional delete operation.  
     #   - To perform a conditional delete, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"Patient?identifier=12345"`).
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
     #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
     #   - If not specified, a normal delete is performed.
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Delete  resource"}
     remote isolated function delete(@display {label: "Resource Type"} ResourceType|string 'type,
-            @display {label: "Logical ID"} string? id = (),
+            @display {label: "Logical ID"} string id,
             @display {label: "Condition for a Conditional Delete"} OnCondition? onCondition = ())
                                             returns FHIRResponse|FHIRError {
-        if id is () && onCondition is () {
-            return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for delete operation.`));
-        }
         string requestURL;
+        string searchParams = "";
         if onCondition is string {
             if matchesQueryPattern(onCondition) {
-                requestURL = onCondition;
+                searchParams = onCondition;
             } else {
-                return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
-                             errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
             }
-        } else {
-            requestURL = string `${SLASH}${'type}${id is string ? SLASH + id : ""}${onCondition is SearchParameters|map<string[]> ? QUESTION_MARK + getConditionalUrl(onCondition) : ""}`;
-
-            if id is () && onCondition is () {
-                return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID_OR_CONDITION, errorDetails = error(string `Either 'id' or 'onCondition' must be provided for delete operation.`));
-            }
-        }        
+        } else if onCondition is SearchParameters|map<string[]> {
+            searchParams = getConditionalParams(onCondition);
+        }
+        requestURL = string `${SLASH}${'type}${SLASH}${id}${QUESTION_MARK}${searchParams}`;      
         do {
             http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), check enrichHeaders({}, self.pkjwtHanlder));
             FHIRResponse result = check getDeleteResourceResponse(response);
@@ -336,7 +330,7 @@ public isolated client class FHIRConnector {
     # + data - Resource data  
     # + onCondition - Condition for a conditional create operation.  
     #   - To perform a conditional create, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"Patient?identifier=12345"`).
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
     #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
     #   - If not specified, a normal create is performed.
     # + returnMimeType - The MIME type of the response 
@@ -352,13 +346,13 @@ public isolated client class FHIRConnector {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
             string? conditionalUrl = ();
             if onCondition is SearchParameters|map<string[]> {
-                conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${getConditionalUrl(onCondition)}`;
+                conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${getConditionalParams(onCondition)}`;
             } else if onCondition is string {
                 if matchesQueryPattern(onCondition) {
-                    conditionalUrl = onCondition;
+                    conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${onCondition}`;
                 } else {
                     return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
-                                 errorDetails = error(string `Conditional URL should be in the format "ResourceType?searchParam=value".`));
+                                 errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
             }
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
