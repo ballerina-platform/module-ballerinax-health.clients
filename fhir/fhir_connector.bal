@@ -147,24 +147,45 @@ public isolated client class FHIRConnector {
     # Updates an existing resource or creates a new resource if the resource doesn't exists 
     #
     # + data - Resource data  
+    # + onCondition - Condition for a conditional update operation.  
+    #   - To perform a conditional update, you can:
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    #     - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>`, which will be used to construct the conditional URL.
+    #   - If not specified, a normal update is performed.
     # + returnMimeType - The MIME type of the response 
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Update resource"}
     remote isolated function update(@display {label: "Resource data"} json|xml data,
+            @display {label: "Condition for a Conditional Update"} OnCondition? onCondition = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                             returns FHIRResponse|FHIRError {
         do {
-            ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
-            string requestURL = SLASH + typeIdInfo.'type;
+
+            ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data);
             string? id = typeIdInfo.id;
-            if (id is string) {
-                requestURL += SLASH + id;
+
+            if id is () {
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + MISSING_ID, errorDetails = error(string `Either ' must be provided for update operation.`));
             }
-            requestURL += QUESTION_MARK + setFormatParameters(returnMimeType);
-            http:Response response = check self.httpClient->put(requestURL, check enrichRequest(request, self.pkjwtHanlder));
+            
+            string requestURL;
+            string searchParams = "";
+            if onCondition is string {
+                if matchesQueryPattern(onCondition) {
+                    searchParams = onCondition;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
+                }
+            } else if onCondition is SearchParameters|map<string[]> {
+                searchParams = getConditionalParams(onCondition);
+            }
+
+            requestURL = string `${SLASH}${typeIdInfo.'type}${SLASH}${<string>id}${QUESTION_MARK}${searchParams}${AMPERSAND}${setFormatParameters(returnMimeType)}`;
+            
+            http:Response response = check self.httpClient->put(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -183,22 +204,42 @@ public isolated client class FHIRConnector {
     # + 'type - The name of the resource type 
     # + id - The logical id of the resource  
     # + data - Resource data  
+    # + onCondition - Condition for a conditional patch operation.  
+    #   - To perform a conditional patch, you can:
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    #   - If not specified, a normal patch is performed.
     # + returnMimeType - The MIME type of the response  
     # + patchContentType - Content type of the patch payload
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Patch resource"}
     remote isolated function patch(@display {label: "Resource Type"} ResourceType|string 'type,
-            @display {label: "Logical ID"} string id,
             @display {label: "Resource data"} json|xml data,
+            @display {label: "Logical ID"} string id,
+            @display {label: "Condition for a Conditional Patch"} OnCondition? onCondition = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Patch Content Type"} MimeType|PatchContentType? patchContentType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                         returns FHIRResponse|FHIRError {
         do {
             http:Request request = setPatchResourceRequest(self.mimeType, returnPreference, data, patchContentType);
-            string requestURL = SLASH + 'type + SLASH + id + QUESTION_MARK + setFormatParameters(returnMimeType);
-            http:Response response = check self.httpClient->patch(requestURL, check enrichRequest(request, self.pkjwtHanlder));
+
+            string requestURL;
+            string searchParams = "";
+            if onCondition is string {
+                if matchesQueryPattern(onCondition) {
+                    searchParams = onCondition;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
+                }
+            } else if onCondition is SearchParameters|map<string[]> {
+                searchParams = getConditionalParams(onCondition);
+            }
+
+            requestURL = string `${SLASH}${'type}${SLASH}${<string>id}${QUESTION_MARK}${searchParams}${AMPERSAND}${setFormatParameters(returnMimeType)}`;
+
+            http:Response response = check self.httpClient->patch(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -212,18 +253,35 @@ public isolated client class FHIRConnector {
         }
     }
 
-    # Deletes an existing resource
+    # Deletes an existing resource.
     #
     # + 'type - The name of the resource type    
     # + id - The logical id of the resource 
+    # + onCondition - Condition for a conditional delete operation.  
+    #   - To perform a conditional delete, you can:
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    #   - If not specified, a normal delete is performed.
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Delete  resource"}
     remote isolated function delete(@display {label: "Resource Type"} ResourceType|string 'type,
-            @display {label: "Logical ID"} string id)
+            @display {label: "Logical ID"} string id,
+            @display {label: "Condition for a Conditional Delete"} OnCondition? onCondition = ())
                                             returns FHIRResponse|FHIRError {
-        string requestURL = SLASH + 'type + SLASH + id;
+        string requestURL;
+        string searchParams = "";
+        if onCondition is string {
+            if matchesQueryPattern(onCondition) {
+                searchParams = onCondition;
+            } else {
+                return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
+            }
+        } else if onCondition is SearchParameters|map<string[]> {
+            searchParams = getConditionalParams(onCondition);
+        }
+        requestURL = string `${SLASH}${'type}${SLASH}${id}${QUESTION_MARK}${searchParams}`;      
         do {
-            http:Response response = check self.httpClient->delete(requestURL, check enrichHeaders({}, self.pkjwtHanlder));
+            http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), check enrichHeaders({}, self.pkjwtHanlder));
             FHIRResponse result = check getDeleteResourceResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -267,22 +325,39 @@ public isolated client class FHIRConnector {
         }
     }
 
-    # Creates a new resource
+# Creates a new resource
     #
     # + data - Resource data  
+    # + onCondition - Condition for a conditional create operation.  
+    #   - To perform a conditional create, you can:
+    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    #   - If not specified, a normal create is performed.
     # + returnMimeType - The MIME type of the response 
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Create resource"}
     remote isolated function create(@display {label: "Resource data"} json|xml data,
+            @display {label: "Condition for a Conditional Create"} OnCondition? onCondition = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Return Preference Type"} PreferenceType returnPreference = MINIMAL)
                                             returns FHIRResponse|FHIRError {
         do {
             ResourceTypeNId typeIdInfo = check extractResourceTypeNId(data, extractId = false);
-            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data);
-            string requestURL = SLASH + typeIdInfo.'type + QUESTION_MARK + setFormatParameters(returnMimeType);
-            http:Response response = check self.httpClient->post(requestURL, check enrichRequest(request, self.pkjwtHanlder));
+            string? conditionalUrl = ();
+            if onCondition is SearchParameters|map<string[]> {
+                conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${getConditionalParams(onCondition)}`;
+            } else if onCondition is string {
+                if matchesQueryPattern(onCondition) {
+                    conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${onCondition}`;
+                } else {
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ` + INVALID_CONDITIONAL_URL, 
+                                 errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
+                }
+            }
+            http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
+            string requestURL = string `${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${setFormatParameters(returnMimeType)}`;
+            http:Response response = check self.httpClient->post(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -299,18 +374,34 @@ public isolated client class FHIRConnector {
     # Searches all resources of a particular type
     #
     # + 'type - The name of the resource type  
+    # + mode - The request mode, GET or POST
     # + searchParameters - The search parameters 
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "search resource"}
     remote isolated function search(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Search Parameters"} SearchParameters|map<string[]>? searchParameters = (),
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
-        string requestUrl = SLASH + 'type + QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl = SLASH + 'type;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            
+            if mode == GET {
+                requestUrl += setSearchParams(searchParameters, returnMimeType);
+
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl += SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -410,16 +501,30 @@ public isolated client class FHIRConnector {
     # Searches across all resources types
     #
     # + searchParameters - The search parameters that are common across all resources 
+    # + mode - The request mode, GET or POST
     # + returnMimeType - The MIME type of the response
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Search across all resources"}
-    remote isolated function searchAll(@display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+    remote isolated function searchAll(
+            @display {label: "Search Parameters"} SearchParameters|map<string[]> searchParameters,
+            @display {label: "Request Mode"} RequestMode mode = GET,
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
-        string requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+        string requestUrl;
         map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
         do {
-            http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            http:Response response;
+            if mode == GET {
+                requestUrl = QUESTION_MARK + setSearchParams(searchParameters, returnMimeType);
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                requestUrl = SLASH + _SEARCH + setSearchParams((), returnMimeType);
+
+                http:Request req = new;
+                req.setTextPayload(createSearchFormData(searchParameters), contentType = APPLICATION_X_WWW_FORM_URLENCODED);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
@@ -669,6 +774,54 @@ public isolated client class FHIRConnector {
             map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
             http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
             return getBulkFileResponse(response);
+        } on fail error e {
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+        }
+    }
+
+    # Invokes a custom FHIR operation (e.g., $lookup, $everything) on a resource type.
+    #
+    # This function allows invoking FHIR operations that are not covered by standard CRUD methods, such as `$lookup`, `$everything`, or any other custom operation defined by the FHIR server.
+    #
+    # + 'type - The name of the resource type on which the operation is invoked
+    # + operationName - The name of the FHIR operation (e.g., "$lookup", "$everything")
+    # + mode - The request mode, GET or POST
+    # + id - The logical id of the resource (optional, used for instance-level operations)
+    # + queryParameters - Query parameters to be sent with the operation
+    # + data - Resource data to be sent in the request body (for POST operations)
+    # + returnMimeType - The MIME type of the response
+    # + return - If successful, FhirResponse record else FhirError record
+    @display {label: "Call custom FHIR operation"}
+    remote isolated function callOperation(@display {label: "Resource Type"} ResourceType|string 'type,
+            @display {label: "Operation Name"} string operationName,
+            @display {label: "Request Mode"} RequestMode mode = GET,
+            @display {label: "Logical ID"} string? id = (),
+            @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
+            @display {label: "Resource data"} json|xml? data = (),
+            @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
+                                    returns FHIRResponse|FHIRError {
+        string requestUrl = SLASH + 'type + setOperationName(operationName, id) + setCallOperationParams(queryParameters, returnMimeType);
+        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        do {
+            http:Response response;
+            
+            if mode == GET {
+                response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            } else {
+                http:Request req = new;
+                req.setPayload(data, contentType = data is xml ? FHIR_XML : FHIR_JSON);
+
+                response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
+            }
+            
+            FHIRResponse result = check getBundleResponse(response);
+            if self.urlRewrite {
+                return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
+            }
+            return result;
         } on fail error e {
             if e is FHIRError {
                 return e;

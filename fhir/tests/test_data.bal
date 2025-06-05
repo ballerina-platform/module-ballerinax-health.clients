@@ -378,6 +378,7 @@ final json & readonly testDeleteResourceFailedData = {
 final json & readonly testUpdateResourceDataJson = {
     "resourceType": "Patient",
     "id": "pat1",
+    "url": "example.com/pat1",
     "text": {
         "status": "generated",
         "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Identifier</td><td/></tr></tbody></table></div>"

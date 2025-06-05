@@ -17,6 +17,40 @@
 import ballerina/http;
 
 http:Service FhirMockService = service object {
+    // System-level GET operation: $diff
+    resource function get Patient/\$diff() returns http:Response {
+        http:Response response = new ();
+        response.statusCode = http:STATUS_OK;
+        response.setPayload({"result": "diff-operation-success"}, FHIR_JSON);
+        return response;
+    }
+
+    // Instance-level GET operation: $everything
+    resource function get Patient/[string id]/\$everything() returns http:Response {
+        http:Response response = new ();
+        if id == "pat1" {
+            response.statusCode = http:STATUS_OK;
+            response.setPayload({"result": "everything-operation-success", "id": id}, FHIR_JSON);
+        } else {
+            response.statusCode = http:STATUS_NOT_FOUND;
+            response.setPayload({"error": "Patient not found"}, FHIR_JSON);
+        }
+        return response;
+    }
+
+    // Instance-level POST operation: $validate
+    resource function post Patient/[string id]/\$validate(http:Request req) returns http:Response {
+        http:Response response = new ();
+        json|error payload = req.getJsonPayload();
+        if id == "pat1" && payload is json {
+            response.statusCode = http:STATUS_OK;
+            response.setPayload({"result": "validate-operation-success", "id": id, "resource": payload}, FHIR_JSON);
+        } else {
+            response.statusCode = http:STATUS_BAD_REQUEST;
+            response.setPayload({"error": "Invalid patient or payload"}, FHIR_JSON);
+        }
+        return response;
+    }
 
     resource function get [string 'type]/[string id](string? _format) returns http:Response {
         http:Response response = new ();
@@ -70,6 +104,21 @@ http:Service FhirMockService = service object {
         check response.setContentType(FHIR_JSON);
         return response;
     }
+    
+    @http:ResourceConfig {
+         consumes: ["application/fhir+json", "application/fhir+xml"]
+    }
+    resource function put [string 'type](http:Request payload) returns http:Response {
+        http:Response response = new ();
+        string? url = payload.getQueryParamValue("url");
+        if url is string && url == "exists" {
+            response.statusCode = http:STATUS_OK;
+        } else {
+            response.statusCode = http:STATUS_NOT_FOUND;
+            response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+        }
+        return response;
+    }
 
     @http:ResourceConfig {
         consumes: [
@@ -99,9 +148,29 @@ http:Service FhirMockService = service object {
         return response;
     }
 
-    resource function delete [string 'type]/[string id]() returns http:Response {
+    resource function delete [string 'type]/[string id](http:Request payload) returns http:Response {
         http:Response response = new ();
         if id == "pat1" {
+            string? url = payload.getQueryParamValue("url");
+            if (url is string && url == "exists") || url is () {
+                response.statusCode = http:STATUS_NO_CONTENT;
+            } else {
+                response.statusCode = http:STATUS_NOT_FOUND;
+                response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+            }
+            // response.statusCode = http:STATUS_NO_CONTENT;
+        } else {
+            response.statusCode = http:STATUS_NOT_FOUND;
+            response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
+        }
+        return response;
+    }
+
+    resource function delete [string 'type](http:Request payload) returns http:Response {
+        http:Response response = new ();
+        string? url = payload.getQueryParamValue("url");
+        string? id = payload.getQueryParamValue("_id");
+        if url is string && url == "exists" || id is string && id == "pat1" {
             response.statusCode = http:STATUS_NO_CONTENT;
         } else {
             response.statusCode = http:STATUS_NOT_FOUND;
@@ -131,18 +200,77 @@ http:Service FhirMockService = service object {
     }
     resource function post [string 'type](http:Request payload) returns http:Response {
         http:Response response = new ();
-        response.statusCode = http:STATUS_CREATED;
-        response.addHeader(LOCATION, "base_url/fhir/Patient/pat1/_history/100");
+        string|error preferHeader = payload.getHeader(PREFER_HEADER);
+        string|error ifMatchHeader = payload.getHeader("If-None-Exist");
 
-        string|error preference = payload.getHeader(PREFER_HEADER);
+        // Simulate conditional create logic
+        boolean isConditional = false;
+        string condition = "";
+        if ifMatchHeader is string && ifMatchHeader != "" {
+            isConditional = true;
+            condition = ifMatchHeader;
+        } else if payload.hasHeader("url") {
+            string|error urlHeader = payload.getHeader("url");
+            if urlHeader is string && urlHeader != "" {
+                isConditional = true;
+                condition = urlHeader;
+            }
+        }
 
-        if preference is string && preference != MINIMAL {
-            response.setPayload(testGetResourceDataJson, FHIR_JSON);
+        // For demonstration, if conditional create is requested, simulate resource existence check
+        boolean resourceExists = false;
+        if isConditional {
+            // Simulate: if condition is "url=exists", treat as already exists
+            if condition == "url=exists" {
+                resourceExists = true;
+            }
+        }
+
+        if resourceExists {
+            // Resource already exists, return 200 OK and existing resource
+            response.statusCode = http:STATUS_OK;
+            response.addHeader(LOCATION, "base_url/fhir/Patient/pat1/_history/100");
+            if preferHeader is string && preferHeader != MINIMAL {
+                response.setPayload(testGetResourceDataJson, FHIR_JSON);
+            }
+        } else {
+            // Resource does not exist, create new
+            response.statusCode = http:STATUS_CREATED;
+            response.addHeader(LOCATION, "base_url/fhir/Patient/pat1/_history/100");
+            if preferHeader is string && preferHeader != MINIMAL {
+                response.setPayload(testGetResourceDataJson, FHIR_JSON);
+            }
+            // Optionally: Add logic to store new test data if needed
+            // e.g., add to an in-memory map or log the payload
         }
         return response;
     }
 
     resource function get [string 'type](string? offset, string? _format) returns http:Response {
+        http:Response response = new ();
+
+        if ('type == "$export") {
+            response.statusCode = http:STATUS_ACCEPTED;
+            response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatus/1`);
+            return response;
+        }
+
+        response.statusCode = http:STATUS_OK;
+        if _format == FHIR_JSON || _format == () {
+            if offset == "0" || offset is () {
+                response.setPayload(testSearchDataSet1Json, FHIR_JSON);
+
+            } else if offset == "1" {
+                response.setPayload(testSearchDataSet2Json, FHIR_JSON);
+
+            }
+        } else {
+            response.setPayload(testSearchDataSet1Xml, FHIR_XML);
+        }
+        return response;
+    }
+
+    resource function post [string 'type]/_search(string? offset, string? _format) returns http:Response {
         http:Response response = new ();
 
         if ('type == "$export") {
@@ -201,6 +329,13 @@ http:Service FhirMockService = service object {
     }
 
     resource function get .() returns http:Response {
+        http:Response response = new ();
+        response.statusCode = http:STATUS_OK;
+        response.setPayload(testSearchDataSet2Json, FHIR_JSON);
+        return response;
+    }
+
+    resource function post _search() returns http:Response {
         http:Response response = new ();
         response.statusCode = http:STATUS_OK;
         response.setPayload(testSearchDataSet2Json, FHIR_JSON);
