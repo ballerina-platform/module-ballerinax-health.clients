@@ -74,11 +74,9 @@ http:OAuth2ClientCredentialsGrantConfig ehrSystemAuthConfig = {
 ### Connector Configuration
 
 ```ballerina
-import ballerinax/health.clients.fhir;
-
-health.clients.fhir:FHIRConnectorConfig fhirServerConfig = {
+fhir_client:FHIRConnectorConfig fhirServerConfig = {
     baseURL: "https://hapi.fhir.org/baseR4",
-    mimeType: health.clients.fhir:FHIR_JSON,
+    mimeType: fhir_client:FHIR_JSON,
     authConfig: ehrSystemAuthConfig
 };
 ```
@@ -88,8 +86,7 @@ health.clients.fhir:FHIRConnectorConfig fhirServerConfig = {
 ### Initialize the Connector
 
 ```ballerina
-import ballerinax/health.clients.fhir;
-health.clients.fhir:FHIRConnector fhirConnector = check new (fhirServerConfig);
+fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
 ```
 
 ### CRUD Operations: Standard (Non-Conditional) and Conditional Interactions
@@ -187,11 +184,29 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 
 ### Invoking Custom FHIR Operations
 
-You can invoke custom FHIR operations (e.g., `$everything`, `$lookup`) using the `callOperation` method:
+You can invoke custom FHIR operations (e.g., `$everything`, `$lookup`) using the `callOperation` method.
+
+#### Usage of `mode` parameter in `callOperation`
+
+The `mode` parameter specifies the HTTP method to use when invoking the FHIR operation:
+
+- Use `http:POST` to invoke the operation with an HTTP POST request (this is the default if not specified).
+- Use `http:GET` to invoke the operation with an HTTP GET request.
+
+This allows you to control whether the FHIR operation is called using GET or POST, depending on the requirements of the specific FHIR operation.
+
+**Default value:** If you do not specify the `mode` parameter, the default is `POST`.
+
+**Examples:**
 
 ```ballerina
+// Invoke a custom operation using POST (default)
 fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->callOperation("Patient", "$everything", id = "123");
+    fhirConnector->callOperation("Patient", operationName = "everything", data = {});
+
+// Invoke a custom operation using GET
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->callOperation("Patient", operationName = "everything", mode = http:GET, id = "123");
 ```
 
 ### Bulk Data Operations

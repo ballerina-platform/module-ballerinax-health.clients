@@ -791,7 +791,7 @@ public isolated client class FHIRConnector {
     #
     # + 'type - The name of the resource type on which the operation is invoked
     # + operationName - The name of the FHIR operation (e.g., "$lookup", "$everything")
-    # + mode - The request mode, GET or POST
+    # + mode - The request mode, GET or , default is POST
     # + id - The logical id of the resource (optional, used for instance-level operations)
     # + queryParameters - Query parameters to be sent with the operation
     # + data - Resource data to be sent in the request body (for POST operations)
@@ -800,7 +800,7 @@ public isolated client class FHIRConnector {
     @display {label: "Call custom FHIR operation"}
     remote isolated function callOperation(@display {label: "Resource Type"} ResourceType|string 'type,
             @display {label: "Operation Name"} string operationName,
-            @display {label: "Request Mode"} RequestMode mode = GET,
+            @display {label: "Request Mode"} RequestMode mode = POST,
             @display {label: "Logical ID"} string? id = (),
             @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
             @display {label: "Resource data"} json|xml? data = (),
