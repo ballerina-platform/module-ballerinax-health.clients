@@ -15,7 +15,9 @@
 // under the License.
 
 import ballerina/http;
+import ballerina/log;
 import ballerina/url;
+import ballerina/regex;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
     string paramString = "";
@@ -106,7 +108,7 @@ isolated function extractXmlNamespaceNRoot(string element) returns XmlNameSpaceN
     return data;
 }
 
-isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, PreferenceType preference, json|xml data) returns http:Request {
+isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, PreferenceType preference, json|xml data, string? conditionalUrl = ()) returns http:Request {
     http:Request request = new ();
     request.setHeader(ACCEPT_HEADER, mimeType);
     string preferHeader = "return=" + preference;
@@ -114,6 +116,11 @@ isolated function setCreateUpdatePatchResourceRequest(MimeType mimeType, Prefere
     request.setPayload(data);
     string contentType = data is json ? FHIR_JSON : FHIR_XML;
     request.setHeader(CONTENT_TYPE, contentType);
+
+    // for the conditional create, set the If-None-Exist header
+    if conditionalUrl is string {
+        request.setHeader(IF_NONE_EXISTS, conditionalUrl);
+    }
     return request;
 }
 
@@ -215,55 +222,40 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
     }
 }
 
-isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
-    string url = QUESTION_MARK;
+isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams) returns string {
+    string paramString = "";
     if (qparams is SearchParameters) {
         foreach string key in qparams.keys() {
             if (qparams.get(key) is string[]) {
                 string[] params = <string[]>qparams.get(key);
                 foreach string param in params {
-                    url += key + EQUALS_SIGN + param + AMPERSAND;
+                    paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
                 }
             } else {
                 string val = <string>qparams.get(key);
-                url += key + EQUALS_SIGN + val + AMPERSAND;
+                paramString += key + EQUALS_SIGN + check url:encode(val, "UTF-8") + AMPERSAND;
             }
+        } on fail var e {
+        	log:printError(string `Error encoding parameter value`, e);
         }
-    }
-    if (qparams is map<string[]>) {
+    } else if (qparams is map<string[]>) {
         foreach string key in qparams.keys() {
             foreach string param in qparams.get(key) {
-                url += key + EQUALS_SIGN + param + AMPERSAND;
+                paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
+            } on fail var e{
+            	log:printError(string `Error encoding parameter value: ${param}`, e);
             }
         }
     }
-    url += setFormatParameters(returnMimeType);
-    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+    return sanitizeRequestUrl(paramString);
+}
+
+isolated function setSearchParams(SearchParameters|map<string[]>? qparams, MimeType? returnMimeType) returns string {
+    return QUESTION_MARK + buildQueryParamsString(qparams) + setFormatParameters(returnMimeType);
 }
 
 isolated function createSearchFormData(SearchParameters|map<string[]>? qparams) returns string {
-    string formData = "";
-    if (qparams is SearchParameters) {
-        foreach string key in qparams.keys() {
-            if (qparams.get(key) is string[]) {
-                string[] params = <string[]>qparams.get(key);
-                foreach string param in params {
-                    formData += key + EQUALS_SIGN + param + AMPERSAND;
-                }
-            } else {
-                string val = <string>qparams.get(key);
-                formData += key + EQUALS_SIGN + val + AMPERSAND;
-            }
-        }
-    }
-    if (qparams is map<string[]>) {
-        foreach string key in qparams.keys() {
-            foreach string param in qparams.get(key) {
-                formData += key + EQUALS_SIGN + param + AMPERSAND;
-            }
-        }
-    }
-    return formData.endsWith(AMPERSAND) ? formData.substring(0, formData.length() - 1) : formData;
+    return buildQueryParamsString(qparams);
 }
 
 isolated function setCallOperationParams(map<string[]>? qparams, MimeType? returnMimeType) returns string {
@@ -276,7 +268,7 @@ isolated function setCallOperationParams(map<string[]>? qparams, MimeType? retur
         }
     }
     url += setFormatParameters(returnMimeType);
-    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+    return sanitizeRequestUrl(url);
 }
 
 isolated function setCapabilityParams(map<anydata>? params, MimeType? returnMimeType) returns string {
@@ -545,9 +537,7 @@ isolated function setBulkExportParams(BulkExportParameters params) returns strin
             paramString += string `${key}${EQUALS_SIGN}${encodedValue}${AMPERSAND}`;
         }
     }
-    return paramString.endsWith(AMPERSAND)
-        ? paramString.substring(0, paramString.length() - 1)
-        : paramString;
+    return sanitizeRequestUrl(paramString);
 }
 
 isolated function getBulkExportResponse(http:Response response) returns FHIRResponse|FHIRError {
@@ -658,4 +648,18 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
                     : config.auth
     };
     return httpConfig;
+}
+
+isolated function getConditionalParams(SearchParameters|map<string[]> conditionalLogic) returns string {
+    return buildQueryParamsString(conditionalLogic);
+}
+
+isolated function sanitizeRequestUrl(string url) returns string {
+    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+}
+
+isolated function matchesQueryPattern(string input) returns boolean {
+    // Regex: key=value[&key=value]*
+    string pattern = "^[^=&?]+=[^=&]+(?:&[^=&?]+=[^=&]+)*$";
+    return regex:matches(input, pattern);
 }

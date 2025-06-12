@@ -217,6 +217,19 @@ public type BulkExportParameters record {
     *BaseBulkExportParameters;
 };
 
+# Represents the possible types that can be used as a condition in conditional FHIR interactions.
+#
+# Used in conditional create, update, or delete operations.
+# Can be one of:
+# - `SearchParameters`: A set of search parameters to match resources.
+# - `map<string[]>`: A map of key-value pairs (with array values) representing search conditions.
+# - `string`: The conditional URL directly as a string (e.g., `"identifier=12345"`).
+#
+# For a conditional create, update or delete, you can:
+# - Provide the conditional URL directly as a string for the `onCondition` parameter.
+# - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>` to construct the conditional URL.
+public type OnCondition SearchParameters|map<string[]>|string;
+
 type ResourceTypeNId record {|
     string 'type;
     string? id;
