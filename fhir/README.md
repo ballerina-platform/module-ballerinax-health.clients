@@ -11,12 +11,15 @@ A generic FHIR client module for Ballerina, enabling seamless integration with F
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [Initialize the Connector](#initialize-the-connector)
-  - [CRUD and Conditional Operation Examples](#crud-and-conditional-operation-examples)
-    - [1. Create a Resource (Conditional Create)](#1-create-a-resource-conditional-create)
-    - [2. Read a Resource by ID](#2-read-a-resource-by-id)
-    - [3. Update a Resource (Conditional Update)](#3-update-a-resource-conditional-update)
-    - [4. Patch a Resource (Conditional Patch)](#4-patch-a-resource-conditional-patch)
-    - [5. Delete a Resource (Conditional Delete)](#5-delete-a-resource-conditional-delete)
+  - [CRUD Operations: Standard (Non-Conditional) and Conditional Interactions](#crud-operations-standard-non-conditional-and-conditional-interactions)
+    - [Create a Resource](#create-a-resource)
+    - [Read a Resource](#read-a-resource)
+    - [Update a Resource](#update-a-resource)
+    - [Patch a Resource](#patch-a-resource)
+    - [Delete a Resource](#delete-a-resource)
+  - [Search Operations (GET and POST)](#search-operations-get-and-post)
+  - [Invoking Custom FHIR Operations](#invoking-custom-fhir-operations)
+  - [Bulk Data Operations](#bulk-data-operations)
 - [Advanced Features](#advanced-features)
 - [References](#references)
 
@@ -37,19 +40,18 @@ This package provides a Ballerina connector to interact with FHIR servers, suppo
 
 ## Installation
 
-Add the dependency to your Ballerina project's `Ballerina.toml`:
+## Importing the Package
 
-```toml
-[dependency]
-org = "ballerinax"
-name = "health.clients.fhir"
-version = "2.1.1"
-```
-
-Or use the Ballerina package manager:
+Install the package using the Ballerina package manager:
 
 ```sh
-bal add ballerinax/health.clients.fhir
+bal pull ballerinax/health.clients.fhir
+```
+
+To use the connector in your Ballerina code, import it as follows:
+
+```ballerina
+import ballerinax/health.clients.fhir as fhir_client;
 ```
 
 ## Configuration
@@ -72,11 +74,11 @@ http:OAuth2ClientCredentialsGrantConfig ehrSystemAuthConfig = {
 ### Connector Configuration
 
 ```ballerina
-import ballerinax/health.clients.fhir as fhir_client;
+import ballerinax/health.clients.fhir;
 
-fhir_client:FHIRConnectorConfig fhirServerConfig = {
+health.clients.fhir:FHIRConnectorConfig fhirServerConfig = {
     baseURL: "https://hapi.fhir.org/baseR4",
-    mimeType: fhir_client:FHIR_JSON,
+    mimeType: health.clients.fhir:FHIR_JSON,
     authConfig: ehrSystemAuthConfig
 };
 ```
@@ -86,126 +88,141 @@ fhir_client:FHIRConnectorConfig fhirServerConfig = {
 ### Initialize the Connector
 
 ```ballerina
-fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
+import ballerinax/health.clients.fhir;
+health.clients.fhir:FHIRConnector fhirConnector = check new (fhirServerConfig);
 ```
 
-### CRUD and Conditional Operation Examples
+### CRUD Operations: Standard (Non-Conditional) and Conditional Interactions
 
-Below are sample usages for basic and conditional FHIR operations.
+#### Create a Resource
 
-#### 1. Create a Resource (Conditional Create)
+**Standard (Non-Conditional) Create:**
 
 ```ballerina
-import ballerinax/health.fhir.r4;
-
-r4:CodeSystem codeSystem = {
-    id: "account-status",
-    url: "http://hl7.org/fhir/account-status",
-    version: "1.0.0",
-    name: "AccountStatus",
-    title: "Account Status Codes",
-    status: r4:CODE_STATUS_ACTIVE,
-    content: r4:CODE_CONTENT_EXAMPLE,
-    concept: [
-        { definition: "The account is active and in use." }
-    ]
-};
-
-map<string[]> condition = { "url": ["http://hl7.org/fhir/account-status"] };
-
-fhir_client:FHIRResponse|fhir_client:FHIRError response = 
-    fhirConnector->create(codeSystem.toJson(), onCondition = condition);
-
-if response is fhir_client:FHIRResponse {
-    io:println("Response status code: ", response.httpStatusCode);
-    io:println("Response body: ", response.'resource.toJson());
-} else {
-    io:println("FHIR Error: (conditional create) ", response.message());
-}
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->create(resourceJson);
 ```
 
-#### 2. Read a Resource by ID
+**Conditional Create:**
 
 ```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response = 
+map<string[]> condition = { "identifier": ["12345"] };
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->create(resourceJson, onCondition = condition);
+```
+
+#### Read a Resource
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhirConnector->getById("Patient", "123456");
-
-if response is fhir_client:FHIRResponse {
-    io:println("Response status code: ", response.httpStatusCode);
-    io:println("Response body: ", response.'resource.toJson());
-} else {
-    io:println("FHIR Error: (read) ", response.message());
-}
 ```
 
-#### 3. Update a Resource (Conditional Update)
+#### Update a Resource
+
+**Standard (Non-Conditional) Update:**
 
 ```ballerina
-import ballerinax/health.fhir.r4;
-
-r4:CodeSystem codeSystem = {
-    id: "account-status",
-    url: "http://hl7.org/fhir/account-status",
-    version: "1.0.0",
-    name: "AccountStatus",
-    title: "Account Status Codes",
-    status: r4:CODE_STATUS_ACTIVE,
-    content: r4:CODE_CONTENT_EXAMPLE,
-    concept: [
-        { definition: "The account is active and in use." }
-    ]
-};
-
-map<string[]> condition = { "url": ["http://hl7.org/fhir/account-status"] };
-
-fhir_client:FHIRResponse|fhir_client:FHIRError response = 
-    fhirConnector->update(codeSystem.toJson(), onCondition = condition);
-
-if response is fhir_client:FHIRResponse {
-    io:println("Response status code: ", response.httpStatusCode);
-    io:println("Response body: ", response.'resource.toJson());
-} else {
-    io:println("FHIR Error: (conditional update) ", response.message());
-}
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->update(resourceJson);
 ```
 
-#### 4. Patch a Resource (Conditional Patch)
+**Conditional Update:**
 
 ```ballerina
-json patchData = [
-    {
-        "op": "replace",
-        "path": "/active",
-        "value": false
-    }
-];
-
-fhir_client:FHIRResponse|fhir_client:FHIRError response = 
-    fhirConnector->patch(fhir_client:PATIENT, patchData, id = "123");
-
-if response is fhir_client:FHIRResponse {
-    io:println("Response status code: ", response.httpStatusCode);
-    io:println("Response body: ", response.'resource.toJson());
-} else {
-    io:println("FHIR Error: (conditional patch) ", response.message());
-}
+map<string[]> condition = { "identifier": ["12345"] };
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->update(resourceJson, onCondition = condition);
 ```
 
-#### 5. Delete a Resource (Conditional Delete)
+#### Patch a Resource
+
+**Standard (Non-Conditional) Patch:**
 
 ```ballerina
-map<string[]> condition = { "url": ["http://hl7.org/fhir/account-status"] };
-
-fhir_client:FHIRResponse|fhir_client:FHIRError response = 
-    fhirConnector->delete("CodeSystem", onCondition = condition);
-
-if response is fhir_client:FHIRResponse {
-    io:println("Response status code: ", response.httpStatusCode);
-    io:println("Response body: ", response.'resource.toJson());
-} else {
-    io:println("FHIR Error: (conditional delete) ", response.message());
-}
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->patch("Patient", patchData, id = "123");
 ```
+
+**Conditional Patch:**
+
+```ballerina
+map<string[]> condition = { "identifier": ["12345"] };
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->patch("Patient", patchData, onCondition = condition);
+```
+
+#### Delete a Resource
+
+**Standard (Non-Conditional) Delete:**
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->delete("Patient", id = "123");
+```
+
+**Conditional Delete:**
+
+```ballerina
+map<string[]> condition = { "identifier": ["12345"] };
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->delete("Patient", onCondition = condition);
+```
+
+### Search Operations (GET and POST)
+
+**GET Search:**
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->search("Patient", searchParameters = { "name": ["John"] });
+```
+
+**POST Search:**
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->search("Patient", mode = fhir_client:POST, searchParameters = { "name": ["John"] });
+```
+
+### Invoking Custom FHIR Operations
+
+You can invoke custom FHIR operations (e.g., `$everything`, `$lookup`) using the `callOperation` method:
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->callOperation("Patient", "$everything", id = "123");
+```
+
+### Bulk Data Operations
+
+- **Start Bulk Export:**
+
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+    ```
+
+- **Check Bulk Export Status:**
+
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkStatus("<content-location-url>");
+    ```
+
+- **Download Exported File:**
+
+    ```ballerina
+    fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkFile("<file-url>");
+    ```
+
+- **Delete Bulk Export Data:**
+
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkDataDelete("<content-location-url>");
+    ```
 
 ## Advanced Features
 
