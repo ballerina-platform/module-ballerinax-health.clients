@@ -271,6 +271,19 @@ isolated function setCallOperationParams(map<string[]>? qparams, MimeType? retur
     return sanitizeRequestUrl(url);
 }
 
+isolated function setCallOperationParams(map<string[]>? qparams, MimeType? returnMimeType) returns string {
+    string url = QUESTION_MARK;
+    if (qparams is map<string[]>) {
+        foreach string key in qparams.keys() {
+            foreach string param in qparams.get(key) {
+                url += key + EQUALS_SIGN + param + AMPERSAND;
+            }
+        }
+    }
+    url += setFormatParameters(returnMimeType);
+    return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+}
+
 isolated function setCapabilityParams(map<anydata>? params, MimeType? returnMimeType) returns string {
     string url = AMPERSAND;
     if params is map<anydata> {
