@@ -663,3 +663,9 @@ isolated function matchesQueryPattern(string input) returns boolean {
     string pattern = "^[^=&?]+=[^=&]+(?:&[^=&?]+=[^=&]+)*$";
     return regex:matches(input, pattern);
 }
+
+function isSupportedFhirVersion(string fhirVersion) returns boolean {
+    // Accepts FHIR versions R4 (4.x.x) and onwards (e.g., 4.0.1, 5.0.0)
+    string versionPattern = "^(4|5)\\.[0-9]+\\.[0-9]+$";
+    return regex:matches(fhirVersion, versionPattern);
+}
