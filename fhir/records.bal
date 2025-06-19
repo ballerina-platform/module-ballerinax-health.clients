@@ -16,8 +16,8 @@
 
 import ballerina/http;
 import ballerina/io;
-import ballerinax/health.base.auth;
 import ballerina/time;
+import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
 #
@@ -91,16 +91,16 @@ public type FHIRConnectorConfig record {|
 #
 # + fileServerUrl - Bulk export file server base url
 # + defaultIntervalInSec - Default interval in seconds for the bulk export server to poll the file server for new files
-# + targetDirectory - Target directory where the bulk export files will be stored
+# + temporaryDirectory - temporary directory to save the exported files
 # + targetServerConfig - Target server config to upload the files to a remote server (e.g., FTP server)
 public type BulkFileServerConfig record {|
     *http:ClientConfiguration;
     @display {label: "Bulk export file server base url"}
-    string fileServerUrl;
+    string? fileServerUrl = ();
     @display {label: "Bulk export server interval in seconds"}
-    decimal defaultIntervalInSec;
+    decimal? defaultIntervalInSec = ();
     @display {label: "Bulk export target directory"}
-    string targetDirectory;
+    string? temporaryDirectory = ();
     @display {label: "Bulk export target server config"}
     TargetServerConfig? targetServerConfig;
 |};
@@ -109,14 +109,12 @@ public type BulkFileServerConfig record {|
 #
 # + 'type - FHIR or FTP  
 # + host - host name of the server
-# + port - port number of the server
 # + username - user name to access the server, for ftp
 # + password - password to access the server, for ftp
 # + directory - directory to save the exported files
 public type TargetServerConfig record {|
-    string 'type;
+    "fhir"|"ftp" 'type;
     string host;
-    int port;
     string username;
     string password;
     string directory;
@@ -131,7 +129,6 @@ public type FHIRResponse record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
-
 |};
 
 # Represents a bulk file response coming from the fhir server side
@@ -154,7 +151,6 @@ public type FHIRServerErrorDetails record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
-
 |};
 
 # Represents the error type for an unsuccessful interaction with the server 
@@ -278,11 +274,11 @@ type Pagination record {|
 |};
 
 // record to map exported resource metadata.
-type OutputFile record {|
+type OutputFile record {
     string 'type;
     string url;
     int count;
-|};
+};
 
 // record to hold summary of exports.
 type ExportSummary record {
@@ -309,15 +305,3 @@ type ExportTask record {|
     string lastStatus;
     PollingEvent[] pollingEvents;
 |};
-
-// Function types to interact with the storage impl.
-
-type getExportTask function (string exportId) returns ExportTask;
-
-type getPollingEvents function (string exportId) returns [PollingEvent];
-
-type addExportTask isolated function (map<ExportTask> taskMap, ExportTask exportTask) returns boolean;
-
-type addPollingEvent isolated function (map<ExportTask> taskMap, PollingEvent pollingEvent) returns boolean;
-
-type updateExportTaskStatus function (map<ExportTask> taskMap, string exportTaskId, string newStatus) returns boolean;

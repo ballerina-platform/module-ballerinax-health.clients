@@ -20,7 +20,7 @@ import ballerina/time;
 
 final isolated map<ExportTask> exportTasks = {};
 
-isolated function addExportTasktoMemory(map<ExportTask> taskMap, ExportTask exportTask) returns boolean {
+isolated function addExportTaskToMemory(map<ExportTask> taskMap, ExportTask exportTask) returns boolean {
     // add the export task to the memory
     exportTask.lastUpdated = time:utcNow();
     lock {
@@ -40,22 +40,37 @@ isolated function addPollingEventToMemory(map<ExportTask> taskMap, PollingEvent 
     return true;
 }
 
-isolated function updateExportTaskStatusInMemory(map<ExportTask> taskMap, string exportTaskId, string newStatus) returns boolean {
+isolated function updateExportTaskStatusInMemory(map<ExportTask> taskMap, string exportTaskId, string newStatus) {
     ExportTask exportTask = taskMap.get(exportTaskId);
     exportTask.lastUpdated = time:utcNow();
     exportTask.lastStatus = newStatus;
-    return true;
 }
 
 isolated function getExportTaskFromMemory(string exportId) returns ExportTask|error {
     // get the export task from the memory
-    ExportTask? exportTask;
     lock {
-        exportTask = exportTasks.get(exportId).clone();
-    }
-    if exportTask is ExportTask {
-        return exportTask.clone();
-    } else {
-        return error("ExportTask not found for exportId: " + exportId);
+        if exportTasks.hasKey(exportId) {
+            return exportTasks.get(exportId).clone();
+        } else {
+            return error("Export task not found for id: " + exportId);
+        }
     }
 }
+
+isolated function removeExportTaskFromMemory(string exportId) {
+    lock {
+        _ = exportTasks.removeIfHasKey(exportId);
+    }
+}
+
+// Function types to interact with the storage impl.
+
+type getExportTask function (string exportId) returns ExportTask;
+
+type getPollingEvents function (string exportId) returns [PollingEvent];
+
+type addExportTask isolated function (map<ExportTask> taskMap, ExportTask exportTask) returns boolean;
+
+type addPollingEvent isolated function (map<ExportTask> taskMap, PollingEvent pollingEvent) returns boolean;
+
+type updateExportTaskStatus function (map<ExportTask> taskMap, string exportTaskId, string newStatus) returns boolean;

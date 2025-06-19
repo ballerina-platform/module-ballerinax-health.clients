@@ -21,6 +21,8 @@ import ballerina/io;
 import ballerina/log;
 import ballerina/task;
 
+final string Path_Seperator = file:pathSeparator;
+
 isolated function executeJob(PollingTask job, decimal interval) returns task:JobId|error? {
     task:JobId id = check task:scheduleJobRecurByFrequency(job, interval);
     job.setId(id);
@@ -60,7 +62,6 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
 }
 
 function sendFileFromFSToFTP(TargetServerConfig config, string sourcePath, string fileName) returns error? {
-    // Implement the FTP server logic here.
     ftp:Client fileClient = check new ({
         host: config.host,
         auth: {
@@ -76,27 +77,25 @@ function sendFileFromFSToFTP(TargetServerConfig config, string sourcePath, strin
     check fileStream.close();
 }
 
-function downloadFiles(json exportSummary, string exportId, string targetDirectory, TargetServerConfig targetServerConfig) returns error? {
+function downloadFiles(json exportSummary, string exportId, string tempDirectory, TargetServerConfig targetServerConfig) returns error? {
     ExportSummary exportSummary1 = check exportSummary.cloneWithType(ExportSummary);
     foreach OutputFile item in exportSummary1.output {
         log:printDebug("Downloading the file.", url = item.url);
-        error? downloadFileResult = saveFileInFS(item.url, string `${targetDirectory}${file:pathSeparator}${exportId}${file:pathSeparator}${item.'type}-exported.ndjson`);
+        error? downloadFileResult = saveFileInFS(item.url, string `${tempDirectory}${Path_Seperator}${exportId}${Path_Seperator}${item.'type}-exported.ndjson`);
         if downloadFileResult is error {
             log:printError("Error occurred while downloading the file.", downloadFileResult);
         }
 
         if targetServerConfig.'type == "ftp" {
             // download the file to the FTP server
-            // implement the FTP server logic
-            error? uploadFileResult = sendFileFromFSToFTP(targetServerConfig, string `${targetDirectory}${file:pathSeparator}${item.'type}-exported.ndjson`, string `${item.'type}-exported.ndjson`);
+            error? uploadFileResult = sendFileFromFSToFTP(targetServerConfig, string `${tempDirectory}${Path_Seperator}${item.'type}-exported.ndjson`, string `${item.'type}-exported.ndjson`);
             if uploadFileResult is error {
                 log:printError("Error occurred while sending the file to ftp.", downloadFileResult);
-
             }
         }
     }
     lock {
-        boolean _ = updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = exportId, newStatus = "Downloaded");
+        updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = exportId, newStatus = "Downloaded");
     }
     log:printInfo("All files downloaded successfully.");
     return null;
@@ -115,7 +114,7 @@ class PollingTask {
     string exportId;
     string lastStatus;
     string location;
-    string targetDirectory;
+    string tempDirectory;
     TargetServerConfig? targetServerConfig;
     task:JobId jobId = {id: 0};
 
@@ -132,7 +131,7 @@ class PollingTask {
                     if status == 200 {
                         self.setLastStaus("Completed");
                         lock {
-                            boolean _ = updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = self.exportId, newStatus = "Export Completed. Downloading files.");
+                            updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = self.exportId, newStatus = "Export Completed. Downloading files.");
                         }
                         json payload = check statusResponse.getJsonPayload();
                         log:printDebug("Export task completed.", exportId = self.exportId, payload = payload);
@@ -143,14 +142,19 @@ class PollingTask {
 
                         // download the files
                         if self.targetServerConfig is TargetServerConfig {
-                            error? downloadFilesResult = downloadFiles(payload, self.exportId, self.targetDirectory, <TargetServerConfig>self.targetServerConfig);
+                            log:printDebug("Target server configuration is provided. Downloading files to the target server.");
+                            error? downloadFilesResult = downloadFiles(payload, self.exportId, self.tempDirectory, <TargetServerConfig>self.targetServerConfig);
                             if downloadFilesResult is error {
                                 log:printError("Error in downloading files", downloadFilesResult);
                             }
+                        } else {
+                            log:printError("Target server configuration is not provided. Cannot download files.");
                         }
+
+                        removeExportTaskFromMemory(self.exportId);
                     } else if status == 202 {
                         log:printDebug("Export task in-progress.", exportId = self.exportId);
-                        string progress = check statusResponse.getHeader("X-Progress");
+                        string progress = check statusResponse.getHeader(X_PROGRESS);
                         PollingEvent pollingEvent = {id: self.exportId, eventStatus: "Success", exportStatus: progress};
                         lock {
                             boolean _ = addPollingEventFuntion(exportTasks, pollingEvent.clone());
@@ -172,11 +176,11 @@ class PollingTask {
         }
     }
 
-    isolated function init(string exportId, string location, string directory, string lastStatus = "In-progress", TargetServerConfig? config = ()) {
+    isolated function init(string exportId, string location, string tempDirectory, string lastStatus = "In-progress", TargetServerConfig? config = ()) {
         self.exportId = exportId;
         self.lastStatus = lastStatus;
         self.location = location;
-        self.targetDirectory = directory;
+        self.tempDirectory = tempDirectory;
         self.targetServerConfig = config;
     }
 
@@ -189,24 +193,30 @@ class PollingTask {
     }
 }
 
-isolated function submitBackgroundJob(string taskId, http:Response|http:ClientError status, decimal defaultIntervalInSec, string targetDirectory, TargetServerConfig? targetServerConfig) {
-    if status is http:Response {
-        // get the location of the status check
-        do {
-            string location = check status.getHeader(CONTENT_LOCATION);
-            task:JobId|() _ = check executeJob(
-                    new PollingTask(
-                        exportId = taskId,
-                        location = location,
-                        directory = targetDirectory,
-                        config = targetServerConfig
-                    ),
-                    defaultIntervalInSec);
-            log:printDebug("Polling location recieved: " + location);
-        } on fail var e {
-            log:printError("Error occurred while getting the location or scheduling the Job", e);
-        }
+isolated function submitBackgroundJob(string taskId, string location, decimal defaultIntervalInSec, string tempDirectory, TargetServerConfig? targetServerConfig) {
+    do {
+        task:JobId|() _ = check executeJob(
+                new PollingTask(
+                    exportId = taskId,
+                    location = location,
+                    tempDirectory = tempDirectory,
+                    config = targetServerConfig
+                ),
+                defaultIntervalInSec);
+        log:printDebug("Polling location recieved: " + location);
+    } on fail var e {
+        log:printError("Error occurred while getting the location or scheduling the Job", e);
+    }
+}
+
+isolated function removeData(string exportId, string tempDirectory) returns error? {
+    log:printDebug("Removing data for export id: " + exportId);
+    removeExportTaskFromMemory(exportId);
+    string directoryPath = string `${tempDirectory}${Path_Seperator}${exportId}`;
+    if check file:test(directoryPath, file:EXISTS) {
+        check file:remove(directoryPath, file:RECURSIVE);
+        log:printDebug("Temporary directory removed successfully.", tempDirectory = tempDirectory);
     } else {
-        log:printError("Error occurred while sending the kick-off request to the bulk export server.", status);
+        log:printDebug("Temporary directory does not exist.", tempDirectory = tempDirectory);
     }
 }

@@ -15,9 +15,11 @@
 // under the License.
 
 import ballerina/http;
-import ballerinax/health.base.auth;
 import ballerina/log;
+import ballerina/mime;
+import ballerina/lang.runtime;
 import ballerina/uuid;
+import ballerinax/health.base.auth;
 
 # This connector allows you to connect and interact with any FHIR server
 @display {label: "FHIR Client Connector"}
@@ -51,10 +53,10 @@ public isolated client class FHIRConnector {
     private final decimal defaultIntervalInSec;
 
     # The target directory for storing exported files
-    private final string targetDirectory;
+    private final string temporaryDirectory;
 
     # The target server configuration for bulk export
-    private final TargetServerConfig? targetServerConfig;
+    private final TargetServerConfig? bulkExportTargetServerConfig;
 
     # Initializes the FHIR client connector
     #
@@ -81,17 +83,17 @@ public isolated client class FHIRConnector {
         BulkFileServerConfig? bulkFileServerConfig = connectorConfig.bulkFileServerConfig;
         if bulkFileServerConfig is BulkFileServerConfig {
             // initialize bulk file server http client
-            self.bulkFileHttpClient = check new (bulkFileServerConfig.fileServerUrl, constructHttpConfigs(bulkFileServerConfig));
             self.fileServerUrl = bulkFileServerConfig.fileServerUrl;
-            self.targetServerConfig = bulkFileServerConfig.targetServerConfig.cloneReadOnly();
-            self.defaultIntervalInSec = bulkFileServerConfig.defaultIntervalInSec;
-            self.targetDirectory = bulkFileServerConfig.targetDirectory;
+            self.bulkFileHttpClient = self.fileServerUrl is string ? (check new (<string>self.fileServerUrl, constructHttpConfigs(bulkFileServerConfig))) : self.httpClient;
+            self.bulkExportTargetServerConfig = bulkFileServerConfig.targetServerConfig.cloneReadOnly();
+            self.defaultIntervalInSec = bulkFileServerConfig.defaultIntervalInSec ?: DEFAULT_POLLING_INTERVAL;
+            self.temporaryDirectory = bulkFileServerConfig.temporaryDirectory ?: DEFAULT_EXPORT_DIRECTORY;
         } else {
             self.bulkFileHttpClient = self.httpClient;
             self.fileServerUrl = ();
-            self.targetServerConfig = ();
+            self.bulkExportTargetServerConfig = ();
             self.defaultIntervalInSec = DEFAULT_POLLING_INTERVAL;
-            self.targetDirectory = DEFAULT_EXPORT_DIRECTORY;
+            self.temporaryDirectory = DEFAULT_EXPORT_DIRECTORY;
         }
         if connectorConfig.urlRewrite && connectorConfig.replacementURL == () {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
@@ -743,7 +745,7 @@ public isolated client class FHIRConnector {
 
             // update config for status polling
             // initialize the status polling
-            addExportTask addTaskFunction = addExportTasktoMemory;
+            addExportTask addTaskFunction = addExportTaskToMemory;
             string taskId = uuid:createType1AsString();
             boolean isSuccess = false;
             http:Response|http:ClientError status;
@@ -751,7 +753,7 @@ public isolated client class FHIRConnector {
             log:printInfo("Bulk exporting started. Sending Kick-off request.");
 
             lock {
-                ExportTask exportTask = {id: taskId, lastStatus: "in-progress", pollingEvents: []};
+                ExportTask exportTask = {id: taskId, lastStatus: "In-progress", pollingEvents: []};
                 isSuccess = addTaskFunction(exportTasks, exportTask);
             }
 
@@ -763,34 +765,33 @@ public isolated client class FHIRConnector {
             // kick-off request to the bulk export server
             log:printDebug(string `Request URL: ${requestUrl}`);
             status = self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
-            
-            decimal intervalInSec;
-            string targetDir;
-            TargetServerConfig? targetConfig;
-            lock {
-                intervalInSec = self.defaultIntervalInSec;
-                targetDir = self.targetDirectory;
-                targetConfig = self.targetServerConfig.clone();
-            }
-            submitBackgroundJob(taskId, status, intervalInSec, targetDir, targetConfig);
-
-            if isSuccess {
-                log:printInfo("Export task persisted.", exportId = taskId);
-            } else {
-                log:printError("Error occurred while adding the export task to the memory.");
-            }
 
             if status is http:Response {    
+                string location = check status.getHeader(CONTENT_LOCATION);
+
+	            // Start the background job in a new strand
+                lock {
+	                submitBackgroundJob(taskId, location, self.defaultIntervalInSec, self.temporaryDirectory, self.bulkExportTargetServerConfig);
+                }
+
+                if isSuccess {
+                    log:printInfo("Export task persisted.", exportId = taskId);
+                } else {
+                    log:printError("Error occurred while adding the export task to the memory.");
+                }
+                
                 string[] headers = status.getHeaderNames();
                 map<string> responseHeaders = {};
                 foreach string header in headers {
                     responseHeaders[header] = check status.getHeader(header);
                 }
+                responseHeaders[EXPORT_ID] = taskId;
                 FHIRResponse result = {
                     httpStatusCode: status.statusCode,
                     'resource: {
                         "exportId": taskId,
-                        "status": "in-progress",
+                        "pollingUrl": location,
+                        "status": check getExportTaskFromMemory(taskId),
                         "bulkExportResponse": check status.getJsonPayload()
                     },
                     serverResponseHeaders: responseHeaders
@@ -819,44 +820,97 @@ public isolated client class FHIRConnector {
     # If the export task exists, it returns a `FHIRResponse` containing the export task details as JSON.
     # If the export task does not exist, it returns a `FHIRError` with error details.
     #
+    # + contentLocation - The URL to poll for the bulk export status, typically found in the response header of the kickoff request
+    #   - If provided, this URL can be used to check the status of the export
     # + exportId - The unique identifier for the export task (used as the polling URL or status reference)
+    #   - If provided, this ID is used to retrieve the export task from in-memory storage
+    #   - If not provided, the function will attempt to use the `contentLocation`
     # + return - On success, returns a `FHIRResponse` record with export task details; on failure, returns a `FHIRError` record
     @display {label: "Check bulk data export progress"}
-    remote isolated function bulkStatus(@display {label: "Bulk export ID"} string exportId)
+    remote isolated function bulkStatus(@display {label: "Bulk status polling url"} string? contentLocation = (), 
+            @display {label: "Bulk export ID"} string? exportId = ())
                                         returns FHIRResponse|FHIRError {
-        ExportTask|error exportTask = getExportTaskFromMemory(exportId);
-        if exportTask is ExportTask {
-            return {
-                httpStatusCode: http:STATUS_OK,
-                'resource: exportTask.toJson(),
-                serverResponseHeaders: {}
-            };
-        } else {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${exportTask.message()}`,  exportId = exportId);
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${exportTask.message()}`, errorDetails = exportTask);
+        do {
+            if exportId is string {    
+                // get the export task from memory using the exportId
+                ExportTask exportTask = check getExportTaskFromMemory(exportId);
+                return {
+                    httpStatusCode: http:STATUS_OK,
+                    'resource: exportTask.toJson(),
+                    serverResponseHeaders: {}
+                };
+            }
+
+            if contentLocation is string {
+                // If contentLocation is provided, use it to check the status of the export
+                    // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
+                    string requestUrl = self.urlRewrite
+                        ? extractPath(contentLocation, <string>self.replacementURL)
+                        : extractPath(contentLocation, self.baseUrl);
+                    map<string> headerMap = {};
+                    log:printDebug(string `Request URL: ${requestUrl}`);
+                    http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+                    FHIRResponse result = check getBulkExportResponse(response);
+                    if self.urlRewrite {
+                        return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
+                    }
+                    return result;
+            }
+
+            // If neither exportId nor contentLocation is provided, return an error
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
+                errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
+        } on fail error e {
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
         }
-    }
+    } 
 
     # Request to delete exported files on the server. Cancels the bulk export process if it is not completed.
     #
     # + contentLocation - Bulk status polling url. Found in the response header of the kickoff request
+    # + exportId - The unique identifier for the export task (used as the polling URL or status reference)
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Check bulk data export progress"}
-    remote isolated function bulkDataDelete(@display {label: "Bulk status polling url"} string contentLocation)
+    remote isolated function bulkDataDelete(@display {label: "Bulk status polling url"} string? contentLocation = (), 
+            @display {label: "Bulk export ID"} string? exportId = ())
                                         returns FHIRResponse|FHIRError {
         do {
-            // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string requestUrl = self.urlRewrite
-                ? extractPath(contentLocation, <string>self.replacementURL)
-                : extractPath(contentLocation, self.baseUrl);
-            map<string> headerMap = {};
-            log:printDebug(string `Request URL: ${requestUrl}`);
-            http:Response response = check self.httpClient->delete(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
-            FHIRResponse result = check getBulkExportResponse(response);
-            if self.urlRewrite {
-                return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
+            if contentLocation is string {
+                // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
+                string requestUrl = self.urlRewrite
+                    ? extractPath(contentLocation, <string>self.replacementURL)
+                    : extractPath(contentLocation, self.baseUrl);
+                map<string> headerMap = {};
+                log:printDebug(string `Request URL: ${requestUrl}`);
+                http:Response response = check self.httpClient->delete(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+                FHIRResponse result = check getBulkExportResponse(response);
+                if self.urlRewrite {
+                    return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
+                }
+                return result;
             }
-            return result;
+
+            if exportId is string {
+                check removeData(exportId, self.temporaryDirectory);
+                return {
+                    httpStatusCode: http:STATUS_OK,
+                    'resource: {
+                        "message": "Export data deleted successfully.",
+                        "exportId": exportId
+                    },
+                    serverResponseHeaders: {}
+                };
+            }
+
+            // If neither exportId nor contentLocation is provided, return an error
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
+                errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
         } on fail error e {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
@@ -869,22 +923,57 @@ public isolated client class FHIRConnector {
     # Request to get the exported bulk file
     #
     # + fileUrl - Bulk file url. Found in the response body of the bulk status request
+    #   - If provided, this URL is used to retrieve the exported file
+    # + exportId - The unique identifier for the export task (optional, used for logging purposes)
+    #   - If provided, this ID is used to log the export task details
+    # + resourceType - The type of the resource being exported (optional, used for logging purposes)
+    #   - If provided, this type is used to log the resource type being exported
     # + additionalHeaders - Additional headers sent with the request
     # + return - If successful, FhirBulkFileResponse record else FhirError record
     @display {label: "Get exported file as a byte[] stream"}
-    remote isolated function bulkFile(@display {label: "Exported file url"} string fileUrl,
+    remote isolated function bulkFile(@display {label: "Exported file url"} string? fileUrl = (),
+            @display {label: "Export ID"} string? exportId = (),
+            @display {label: "Resource Type"} ResourceType|string? resourceType = (),
             @display {label: "Additional headers sent with the request"} map<string>? additionalHeaders = ())
                                         returns FHIRBulkFileResponse|FHIRError {
         do {
-            // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-            string requestUrl = self.urlRewrite
-                ? extractPath(fileUrl, <string>self.replacementURL)
-                : extractPath(fileUrl, self.fileServerUrl ?: self.baseUrl);
-            map<string> otherHeaders = additionalHeaders ?: {};
-            map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
-            log:printDebug(string `Request URL: ${requestUrl}`);
-            http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
-            return getBulkFileResponse(response);
+            if fileUrl is string {
+                // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
+                string requestUrl = self.urlRewrite
+                    ? extractPath(fileUrl, <string>self.replacementURL)
+                    : extractPath(fileUrl, self.fileServerUrl ?: self.baseUrl);
+                map<string> otherHeaders = additionalHeaders ?: {};
+                map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
+                log:printDebug(string `Request URL: ${requestUrl}`);
+                http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
+                return getBulkFileResponse(response);
+            } 
+            
+            if exportId is string {
+                if resourceType is string {
+                    log:printInfo("Downloading file for member: " + exportId + " and resource type: " + resourceType);
+                    string filePath = self.temporaryDirectory + Path_Seperator + exportId + Path_Seperator + resourceType + "-exported.ndjson";
+
+                    mime:Entity entity = new;
+                    entity.setFileAsEntityBody(filePath);
+
+                    http:Response response = new;
+                    response.setEntity(entity);
+                    error? contentType = response.setContentType("gzip");
+                    if contentType is error {
+                        log:printError("Error occurred while setting the content type: ");
+                    }
+                    return getBulkFileResponse(response);
+                } else {
+                    log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`);
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`, 
+                        errorDetails = error(string `The 'fileUrl' parameter must be provided to retrieve the exported file for export ID: ${exportId}.`));
+                }
+            } 
+            
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}`);
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}`, 
+                errorDetails = error(string `The 'fileUrl' parameter must be provided to retrieve the exported file.`));
         } on fail error e {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
@@ -945,6 +1034,32 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
         }
     }
+}
+
+# Waits for the completion of a bulk export file download.
+#
+# This function continuously checks the status of a bulk export task identified by `taskId`.
+# It blocks execution until the export task status is "Downloaded", indicating the file download is complete.
+#
+# + exportId - The unique identifier of the export task to monitor.
+public isolated function waitForBulkExportCompletion(string exportId) {
+    worker checkStatus {
+        while true {
+            ExportTask|error exportTask = getExportTaskFromMemory(exportId = exportId);
+            if exportTask is ExportTask {
+                if exportTask.lastStatus == "Downloaded" {
+                    log:printInfo("Bulk export completed successfully.", exportId = exportId);
+                    break;
+                }
+            } else {
+                // not found meaning the export task is not available in memory
+                break;
+            }
+            runtime:sleep(15);  
+        }
+    }
+
+    wait checkStatus;
 }
 
 isolated function enrichHeaders(map<string> headers, auth:PKJWTAuthHandler? handler) returns map<string>|FHIRError {

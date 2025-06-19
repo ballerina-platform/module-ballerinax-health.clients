@@ -260,6 +260,8 @@ const LOCATION = "Location";
 const CONTENT_TYPE = "Content-Type";
 const CONTENT_LOCATION = "Content-Location";
 const IF_NONE_EXISTS = "If-None-Exist";
+const X_PROGRESS = "X-Progress";
+const EXPORT_ID = "Export-ID";
 
 # Error messages 
 const RESOURCE_ID_NOT_FOUND_IN_DATA = "The provided resource data doesn't contain a id value";
@@ -276,6 +278,8 @@ const REPLACEMENT_URL_NOT_PROVIDED = "URL rewrite is set to true, but replacemen
 const GROUP_ID_NOT_PROVIDED = "The parameter 'groupId' is not provided for Group Bulk Export operation";
 const MISSING_ID = "'id' is a mandatory parameter for the interaction";
 const INVALID_CONDITIONAL_URL = "The provided conditional URL is invalid";
+const BULK_EXPORT_ID_NOT_PROVIDED = "Either exportId or contentLocation must be provided for the Bulk Export Status operation";
+const BULK_FILE_URL_NOT_PROVIDED = "Either fileUrl or exportId must be provided for the Bulk Export File operation";
 
 # XML attributes
 const XML_ID = "id";
@@ -292,4 +296,4 @@ const SELF = "self";
 
 # default values
 const DEFAULT_POLLING_INTERVAL = 2.0d;
-const DEFAULT_EXPORT_DIRECTORY = "/export_directory";
+const DEFAULT_EXPORT_DIRECTORY = "bulk_export";
