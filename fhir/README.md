@@ -1,4 +1,3 @@
-
 # Ballerina FHIR Client Connector
 
 A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms.
@@ -238,6 +237,12 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
         fhirConnector->bulkDataDelete("<content-location-url>");
     ```
+
+### CapabilityStatement Validation
+
+> **Note:** This validation is available in `ballerinax/health.clients.fhir` version 3.0.0 onwards.
+
+When initializing the `FHIRConnector`, the connector automatically retrieves and validates the FHIR server's [CapabilityStatement](https://hl7.org/fhir/capabilitystatement.html) as part of its `init` function. This validation ensures that the target service is a genuine FHIR server and supports the required FHIR version (such as R4 or R5). If the CapabilityStatement is missing, invalid, or indicates an unsupported FHIR version, the connector initialization will fail. This mechanism is essential for verifying that the service you are connecting to is a compliant FHIR service before performing any operations.
 
 ## Advanced Features
 

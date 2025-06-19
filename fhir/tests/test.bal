@@ -27,7 +27,7 @@ FHIRConnectorConfig config = {
     baseURL: localhost + testServerBaseUrl,
     mimeType: FHIR_JSON
 };
-FHIRConnector fhirConnector = check new (config);
+FHIRConnector fhirConnector;
 
 FHIRConnectorConfig urlRewriteConfig = {
     baseURL: localhost + testServerBaseUrl,
@@ -35,16 +35,17 @@ FHIRConnectorConfig urlRewriteConfig = {
     urlRewrite: true,
     replacementURL: replacementUrl
 };
-FHIRConnector urlRewriteConnector = check new (urlRewriteConfig);
+FHIRConnector urlRewriteConnector;
 
 listener http:Listener listenerEP = check new (8080);
 
-@test:BeforeSuite
-function setup() returns error? {
+function init() returns error? {
     check listenerEP.attach(FhirMockService, testServerBaseUrl);
     check listenerEP.'start();
     log:printInfo("FHIR mock service has started");
 
+    fhirConnector = check new (config);
+    urlRewriteConnector = check new (urlRewriteConfig);
 }
 
 @test:Config {}
