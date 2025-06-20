@@ -1,4 +1,3 @@
-
 # Ballerina FHIR Client Connector
 
 A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms.
@@ -20,6 +19,7 @@ A generic FHIR client module for Ballerina, enabling seamless integration with F
   - [Search Operations (GET and POST)](#search-operations-get-and-post)
   - [Invoking Custom FHIR Operations](#invoking-custom-fhir-operations)
   - [Bulk Data Operations](#bulk-data-operations)
+  - [Bulk Export Usage with FHIR Client](#bulk-export-usage-with-fhir-client)
 - [Advanced Features](#advanced-features)
 - [References](#references)
 
@@ -238,6 +238,69 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
         fhirConnector->bulkDataDelete("<content-location-url>");
     ```
+
+## Bulk Export Usage with FHIR Client
+
+This section describes how to use the bulk export functions provided by the FHIR client, including configuration, execution flow, and example code.
+
+### 1. Configuring `bulkFileServerConfig`
+
+To enable bulk export, you must configure the `bulkFileServerConfig` in your `FHIRConnectorConfig`. This configuration specifies the file server details where exported files will be stored or retrieved from. Example configuration:
+
+```ballerina
+fhir_client:BulkFileServerConfig bulkFileServerConfig = {
+    'type: "fhir", 
+    host: "eu-central-1.sftpcloud.io",
+    directory: "/target/files", 
+    username: "<username>",
+    password: "<password>"
+};
+
+fhir_client:FHIRConnectorConfig fhirServerConfig = {
+    baseURL: "https://bulk-data.smarthealthit.org/fhir",
+    mimeType: fhir_client:FHIR_JSON, 
+    bulkFileServerConfig: bulkFileServerConfig
+};
+```
+
+### 2. Bulk Export Execution Flow
+
+The typical steps for performing a bulk export are:
+
+1. **Start the bulk export:**
+
+   ```ballerina
+   fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+   json responseBody = response.'resource.toJson();
+   string exportId = check responseBody.exportId;
+   string pollingUrl = check responseBody.pollingUrl;
+   ```
+
+2. **Wait for export completion:**
+   Use `waitForBulkExportCompletion(exportId)` to block the main thread until the export is finished. This is especially useful in standalone applications (e.g., inside a `main` function). In service-based applications, this is usually not required.
+
+   ```ballerina
+   fhir_client:waitForBulkExportCompletion(exportId);
+   ```
+
+3. **Download the exported files:**
+
+   ```ballerina
+   fhir_client:FHIRResponse response = check fhirConnector->bulkFile(exportId = exportId, resourceType = fhir_client:PATIENT);
+   ```
+
+4. **Delete the exported files from the server:**
+
+   ```ballerina
+   fhir_client:FHIRResponse response = check fhirConnector->bulkDataDelete(exportId = exportId);
+   ```
+
+### 3. Use Case for `waitForBulkExportCompletion`
+
+- **Standalone Applications:**
+  Use `waitForBulkExportCompletion(exportId)` to ensure the main thread waits until the export process is complete before proceeding. This is important to avoid attempting to download files before they are ready.
+- **Service Applications:**
+  This function is generally not needed, as service handlers are event-driven and can manage asynchronous operations differently.
 
 ## Advanced Features
 
