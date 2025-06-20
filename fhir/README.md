@@ -239,6 +239,12 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
         fhirConnector->bulkDataDelete("<content-location-url>");
     ```
 
+### CapabilityStatement Validation
+
+> **Note:** This validation is available in `ballerinax/health.clients.fhir` version 3.0.0 onwards.
+
+When initializing the `FHIRConnector`, the connector automatically retrieves and validates the FHIR server's [CapabilityStatement](https://hl7.org/fhir/capabilitystatement.html) as part of its `init` function. This validation ensures that the target service is a genuine FHIR server and supports the required FHIR version (such as R4 or R5). If the CapabilityStatement is missing, invalid, or indicates an unsupported FHIR version, the connector initialization will fail. This mechanism is essential for verifying that the service you are connecting to is a compliant FHIR service before performing any operations.
+
 ## Bulk Export Usage with FHIR Client
 
 This section describes how to use the bulk export functions provided by the FHIR client, including configuration, execution flow, and example code.

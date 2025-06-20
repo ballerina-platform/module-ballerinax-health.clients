@@ -35,7 +35,7 @@ FHIRConnectorConfig config = {
         directory: "/target/bulk_files"
     }
 };
-FHIRConnector fhirConnector = check new (config);
+FHIRConnector fhirConnector;
 
 FHIRConnectorConfig urlRewriteConfig = {
     baseURL: localhost + testServerBaseUrl,
@@ -51,16 +51,17 @@ FHIRConnectorConfig urlRewriteConfig = {
         directory: "/target/bulk_files1"
     }
 };
-FHIRConnector urlRewriteConnector = check new (urlRewriteConfig);
+FHIRConnector urlRewriteConnector;
 
 listener http:Listener listenerEP = check new (8080);
 
-@test:BeforeSuite
-function setup() returns error? {
+function init() returns error? {
     check listenerEP.attach(FhirMockService, testServerBaseUrl);
     check listenerEP.'start();
     log:printInfo("FHIR mock service has started");
 
+    fhirConnector = check new (config);
+    urlRewriteConnector = check new (urlRewriteConfig);
 }
 
 @test:Config {}

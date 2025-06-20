@@ -92,8 +92,34 @@ public isolated client class FHIRConnector {
             self.bulkFileServerConfig = ();
         }
         if connectorConfig.urlRewrite && connectorConfig.replacementURL == () {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
             return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
+        }
+
+        // get the capability statement of the server
+        log:printDebug(string `Retrieving the capability statement of the server`);
+        FHIRResponse|FHIRError capabilityResponse = check self->getConformance();
+        if capabilityResponse is FHIRError {
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, capabilityResponse);
+            return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, errorDetails = capabilityResponse);
+        } else {
+            log:printDebug(string `Successfully retrieved the capability statement of the server`);
+            string fhirVersion;
+            json resourceVal = <json>capabilityResponse.'resource;
+            
+            do {
+                fhirVersion = check resourceVal.fhirVersion;
+            } on fail {
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
+                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
+            }
+
+            if (isSupportedFhirVersion(fhirVersion)) {
+                log:printDebug(string `FHIR version ${fhirVersion} is supported`);
+            } else {
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
+                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
+            }
         }
     }
 
@@ -121,7 +147,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -155,7 +181,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -187,7 +213,7 @@ public isolated client class FHIRConnector {
             string? id = typeIdInfo.id;
 
             if id is () {
-                log:printError(string `${FHIR_CONNECTOR_ERROR}: ${MISSING_ID}`);
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${MISSING_ID}`);
                 return error(string `${FHIR_CONNECTOR_ERROR}: ${MISSING_ID}`, errorDetails = error(string `Either ' must be provided for update operation.`));
             }
             
@@ -197,7 +223,7 @@ public isolated client class FHIRConnector {
                 if matchesQueryPattern(onCondition) {
                     searchParams = onCondition;
                 } else {
-                    log:printError(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
+                    log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
                     return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
             } else if onCondition is SearchParameters|map<string[]> {
@@ -214,7 +240,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -254,7 +280,7 @@ public isolated client class FHIRConnector {
                 if matchesQueryPattern(onCondition) {
                     searchParams = onCondition;
                 } else {
-                    log:printError(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
+                    log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
                     return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
             } else if onCondition is SearchParameters|map<string[]> {
@@ -271,7 +297,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -300,7 +326,7 @@ public isolated client class FHIRConnector {
             if matchesQueryPattern(onCondition) {
                 searchParams = onCondition;
             } else {
-                log:printError(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
                 return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`, errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
             }
         } else if onCondition is SearchParameters|map<string[]> {
@@ -316,7 +342,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -348,7 +374,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -382,7 +408,7 @@ public isolated client class FHIRConnector {
                 if matchesQueryPattern(onCondition) {
                     conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${onCondition}`;
                 } else {
-                    log:printError(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
+                    log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
                     return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`, 
                                  errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
@@ -397,7 +423,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -444,7 +470,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -474,7 +500,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -504,7 +530,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -532,7 +558,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -575,7 +601,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -605,11 +631,11 @@ public isolated client class FHIRConnector {
                 }
                 return result;
             } else {
-                log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BUNDLE_TYPE_ERROR}${BATCH}`);
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${BUNDLE_TYPE_ERROR}${BATCH}`);
                 return error(FHIR_CONNECTOR_ERROR, errorDetails = error(BUNDLE_TYPE_ERROR + BATCH));
             }
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -639,12 +665,12 @@ public isolated client class FHIRConnector {
                 }
                 return result;
             } else {
-                log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BUNDLE_TYPE_ERROR}${TRANSACTION}`);
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${BUNDLE_TYPE_ERROR}${TRANSACTION}`);
                 return error(FHIR_CONNECTOR_ERROR, errorDetails = error(BUNDLE_TYPE_ERROR + TRANSACTION));
             }
 
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -674,7 +700,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -704,7 +730,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -807,7 +833,7 @@ public isolated client class FHIRConnector {
                 return error(string `${FHIR_CONNECTOR_ERROR}: ${status.message()}`, errorDetails = status);
             }
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -863,7 +889,7 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
                 errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -913,7 +939,7 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
                 errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -976,7 +1002,7 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}`, 
                 errorDetails = error(string `The 'fileUrl' parameter must be provided to retrieve the exported file.`));
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -1028,7 +1054,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
                 return e;
             }
@@ -1069,7 +1095,7 @@ isolated function enrichHeaders(map<string> headers, auth:PKJWTAuthHandler? hand
     }
     map<string>|error enrichedHeader = handler.enrichHeaders(headers);
     if enrichedHeader is error {
-        log:printError(string `${FHIR_CONNECTOR_ERROR}: ${enrichedHeader.message()}`, enrichedHeader);
+        log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${enrichedHeader.message()}`, enrichedHeader);
         return error(string `${FHIR_CONNECTOR_ERROR}: ${enrichedHeader.message()}`, errorDetails = enrichedHeader);
     }
     return enrichedHeader;
@@ -1081,7 +1107,7 @@ isolated function enrichRequest(http:Request req, auth:PKJWTAuthHandler? handler
     }
     http:Request|error enrichedReq = handler->enrich(req);
     if enrichedReq is error {
-        log:printError(string `${FHIR_CONNECTOR_ERROR}: ${enrichedReq.message()}`, enrichedReq);
+        log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${enrichedReq.message()}`, enrichedReq);
         return error(string `${FHIR_CONNECTOR_ERROR}: ${enrichedReq.message()}`, errorDetails = enrichedReq);
     }
     return enrichedReq;
