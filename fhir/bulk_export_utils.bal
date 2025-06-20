@@ -61,7 +61,7 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
     log:printDebug(string `Successfully downloaded the file. File name: ${fileName}`);
 }
 
-function sendFileFromFSToFTP(TargetServerConfig config, string sourcePath, string fileName) returns error? {
+function sendFileFromFSToFTP(BulkFileServerConfig config, string sourcePath, string fileName) returns error? {
     ftp:Client fileClient = check new ({
         host: config.host,
         auth: {
@@ -77,18 +77,18 @@ function sendFileFromFSToFTP(TargetServerConfig config, string sourcePath, strin
     check fileStream.close();
 }
 
-function downloadFiles(json exportSummary, string exportId, string tempDirectory, TargetServerConfig targetServerConfig) returns error? {
+function downloadFiles(json exportSummary, string exportId, BulkFileServerConfig targetServerConfig) returns error? {
     ExportSummary exportSummary1 = check exportSummary.cloneWithType(ExportSummary);
     foreach OutputFile item in exportSummary1.output {
         log:printDebug("Downloading the file.", url = item.url);
-        error? downloadFileResult = saveFileInFS(item.url, string `${tempDirectory}${Path_Seperator}${exportId}${Path_Seperator}${item.'type}-exported.ndjson`);
+        error? downloadFileResult = saveFileInFS(item.url, string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}${Path_Seperator}${item.'type}-exported.ndjson`);
         if downloadFileResult is error {
             log:printError("Error occurred while downloading the file.", downloadFileResult);
         }
 
         if targetServerConfig.'type == "ftp" {
             // download the file to the FTP server
-            error? uploadFileResult = sendFileFromFSToFTP(targetServerConfig, string `${tempDirectory}${Path_Seperator}${item.'type}-exported.ndjson`, string `${item.'type}-exported.ndjson`);
+            error? uploadFileResult = sendFileFromFSToFTP(targetServerConfig, string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${item.'type}-exported.ndjson`, string `${item.'type}-exported.ndjson`);
             if uploadFileResult is error {
                 log:printError("Error occurred while sending the file to ftp.", downloadFileResult);
             }
@@ -101,21 +101,12 @@ function downloadFiles(json exportSummary, string exportId, string tempDirectory
     return null;
 }
 
-function addQueryParam(string queryString, string key, string value) returns string {
-    if queryString == "" {
-        return string `?${key}=${value}`;
-    } else {
-        return string `${queryString}&${key}=${value}`;
-    }
-}
-
 class PollingTask {
     *task:Job;
     string exportId;
     string lastStatus;
     string location;
-    string tempDirectory;
-    TargetServerConfig? targetServerConfig;
+    BulkFileServerConfig bulkFileServerConfig;
     task:JobId jobId = {id: 0};
 
     public function execute() {
@@ -141,14 +132,10 @@ class PollingTask {
                         }
 
                         // download the files
-                        if self.targetServerConfig is TargetServerConfig {
-                            log:printDebug("Target server configuration is provided. Downloading files to the target server.");
-                            error? downloadFilesResult = downloadFiles(payload, self.exportId, self.tempDirectory, <TargetServerConfig>self.targetServerConfig);
-                            if downloadFilesResult is error {
-                                log:printError("Error in downloading files", downloadFilesResult);
-                            }
-                        } else {
-                            log:printError("Target server configuration is not provided. Cannot download files.");
+                        log:printDebug("Target server configuration is provided. Downloading files to the target server.");
+                        error? downloadFilesResult = downloadFiles(payload, self.exportId, self.bulkFileServerConfig);
+                        if downloadFilesResult is error {
+                            log:printError("Error in downloading files", downloadFilesResult);
                         }
 
                         removeExportTaskFromMemory(self.exportId);
@@ -176,12 +163,11 @@ class PollingTask {
         }
     }
 
-    isolated function init(string exportId, string location, string tempDirectory, string lastStatus = "In-progress", TargetServerConfig? config = ()) {
+    isolated function init(string exportId, string location, BulkFileServerConfig config) {
         self.exportId = exportId;
-        self.lastStatus = lastStatus;
+        self.lastStatus = "In-progress";
         self.location = location;
-        self.tempDirectory = tempDirectory;
-        self.targetServerConfig = config;
+        self.bulkFileServerConfig = config;
     }
 
     function setLastStaus(string newStatus) {
@@ -193,30 +179,29 @@ class PollingTask {
     }
 }
 
-isolated function submitBackgroundJob(string taskId, string location, decimal defaultIntervalInSec, string tempDirectory, TargetServerConfig? targetServerConfig) {
+isolated function submitBackgroundJob(string taskId, string location, BulkFileServerConfig targetServerConfig) {
     do {
         task:JobId|() _ = check executeJob(
                 new PollingTask(
                     exportId = taskId,
                     location = location,
-                    tempDirectory = tempDirectory,
                     config = targetServerConfig
                 ),
-                defaultIntervalInSec);
+                targetServerConfig.defaultIntervalInSec ?: DEFAULT_POLLING_INTERVAL);
         log:printDebug("Polling location recieved: " + location);
     } on fail var e {
         log:printError("Error occurred while getting the location or scheduling the Job", e);
     }
 }
 
-isolated function removeData(string exportId, string tempDirectory) returns error? {
+isolated function removeData(string exportId) returns error? {
     log:printDebug("Removing data for export id: " + exportId);
     removeExportTaskFromMemory(exportId);
-    string directoryPath = string `${tempDirectory}${Path_Seperator}${exportId}`;
+    string directoryPath = string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}`;
     if check file:test(directoryPath, file:EXISTS) {
         check file:remove(directoryPath, file:RECURSIVE);
-        log:printDebug("Temporary directory removed successfully.", tempDirectory = tempDirectory);
+        log:printDebug("Temporary directory removed successfully.");
     } else {
-        log:printDebug("Temporary directory does not exist.", tempDirectory = tempDirectory);
+        log:printDebug("Temporary directory does not exist.");
     }
 }

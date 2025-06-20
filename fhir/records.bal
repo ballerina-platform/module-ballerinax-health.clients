@@ -91,33 +91,27 @@ public type FHIRConnectorConfig record {|
 #
 # + fileServerUrl - Bulk export file server base url
 # + defaultIntervalInSec - Default interval in seconds for the bulk export server to poll the file server for new files
-# + temporaryDirectory - temporary directory to save the exported files
-# + targetServerConfig - Target server config to upload the files to a remote server (e.g., FTP server)
+# + 'type - FHIR or FTP  
+# + host - host name of the server
+# + username - user name to access the server, for ftp
+# + password - password to access the server, for ftp
+# + directory - directory to save the exported files
 public type BulkFileServerConfig record {|
     *http:ClientConfiguration;
     @display {label: "Bulk export file server base url"}
     string? fileServerUrl = ();
     @display {label: "Bulk export server interval in seconds"}
     decimal? defaultIntervalInSec = ();
-    @display {label: "Bulk export target directory"}
-    string? temporaryDirectory = ();
-    @display {label: "Bulk export target server config"}
-    TargetServerConfig? targetServerConfig;
-|};
-
-# Server config for import FHIR resources.
-#
-# + 'type - FHIR or FTP  
-# + host - host name of the server
-# + username - user name to access the server, for ftp
-# + password - password to access the server, for ftp
-# + directory - directory to save the exported files
-public type TargetServerConfig record {|
-    "fhir"|"ftp" 'type;
+    @display {label: "File server host url"}
     string host;
+    @display {label: "File server username"}
     string username;
+    @display {label: "File server password"}
     string password;
+    @display {label: "Directory to save exported files"}
     string directory;
+    @display {label: "File server type"}
+    "fhir"|"ftp" 'type;
 |};
 
 # Represents a success response coming from the fhir server side

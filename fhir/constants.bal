@@ -280,6 +280,7 @@ const MISSING_ID = "'id' is a mandatory parameter for the interaction";
 const INVALID_CONDITIONAL_URL = "The provided conditional URL is invalid";
 const BULK_EXPORT_ID_NOT_PROVIDED = "Either exportId or contentLocation must be provided for the Bulk Export Status operation";
 const BULK_FILE_URL_NOT_PROVIDED = "Either fileUrl or exportId must be provided for the Bulk Export File operation";
+const BULK_FILE_SERVER_CONFIG_NOT_PROVIDED = "The target server configuration is not provided for the Bulk Export File operation";
 
 # XML attributes
 const XML_ID = "id";

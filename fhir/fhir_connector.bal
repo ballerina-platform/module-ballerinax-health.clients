@@ -49,14 +49,8 @@ public isolated client class FHIRConnector {
     # The file server URL of the FHIR server
     private final string? fileServerUrl;
 
-    # The default interval in seconds for polling operations
-    private final decimal defaultIntervalInSec;
-
-    # The target directory for storing exported files
-    private final string temporaryDirectory;
-
-    # The target server configuration for bulk export
-    private final TargetServerConfig? bulkExportTargetServerConfig;
+    # The bulk file server configurations
+    private final BulkFileServerConfig? bulkFileServerConfig;
 
     # Initializes the FHIR client connector
     #
@@ -80,20 +74,22 @@ public isolated client class FHIRConnector {
             self.pkjwtHanlder = new (authConfig);
         }
 
-        BulkFileServerConfig? bulkFileServerConfig = connectorConfig.bulkFileServerConfig;
-        if bulkFileServerConfig is BulkFileServerConfig {
+        BulkFileServerConfig? bulkConfig = connectorConfig.bulkFileServerConfig;
+        if bulkConfig is BulkFileServerConfig {
             // initialize bulk file server http client
-            self.fileServerUrl = bulkFileServerConfig.fileServerUrl;
-            self.bulkFileHttpClient = self.fileServerUrl is string ? (check new (<string>self.fileServerUrl, constructHttpConfigs(bulkFileServerConfig))) : self.httpClient;
-            self.bulkExportTargetServerConfig = bulkFileServerConfig.targetServerConfig.cloneReadOnly();
-            self.defaultIntervalInSec = bulkFileServerConfig.defaultIntervalInSec ?: DEFAULT_POLLING_INTERVAL;
-            self.temporaryDirectory = bulkFileServerConfig.temporaryDirectory ?: DEFAULT_EXPORT_DIRECTORY;
+            self.bulkFileServerConfig = {
+                'type: bulkConfig.'type,
+                directory: bulkConfig.directory,
+                host: bulkConfig.host,
+                username: bulkConfig.username,
+                password: bulkConfig.password
+            };
+            self.fileServerUrl = bulkConfig.fileServerUrl;
+            self.bulkFileHttpClient = bulkConfig.fileServerUrl is string ? (check new (<string>bulkConfig.fileServerUrl, constructHttpConfigs(bulkConfig))) : self.httpClient;
         } else {
             self.bulkFileHttpClient = self.httpClient;
             self.fileServerUrl = ();
-            self.bulkExportTargetServerConfig = ();
-            self.defaultIntervalInSec = DEFAULT_POLLING_INTERVAL;
-            self.temporaryDirectory = DEFAULT_EXPORT_DIRECTORY;
+            self.bulkFileServerConfig = ();
         }
         if connectorConfig.urlRewrite && connectorConfig.replacementURL == () {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
@@ -728,6 +724,11 @@ public isolated client class FHIRConnector {
             @display {label: "Bulk export parameters"} BulkExportParameters? bulkExportParameters = ())
                                         returns FHIRResponse|FHIRError {
         do {
+            lock {
+	            if self.bulkFileServerConfig !is BulkFileServerConfig {
+	                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
+	            }
+            }
             string requestUrl = SLASH;
             if bulkExportLevel == EXPORT_SYSTEM {
                 requestUrl += EXPORT;
@@ -771,7 +772,7 @@ public isolated client class FHIRConnector {
 
 	            // Start the background job in a new strand
                 lock {
-	                submitBackgroundJob(taskId, location, self.defaultIntervalInSec, self.temporaryDirectory, self.bulkExportTargetServerConfig);
+	                submitBackgroundJob(taskId, location, <BulkFileServerConfig>self.bulkFileServerConfig);
                 }
 
                 if isSuccess {
@@ -835,7 +836,7 @@ public isolated client class FHIRConnector {
                 // get the export task from memory using the exportId
                 ExportTask exportTask = check getExportTaskFromMemory(exportId);
                 return {
-                    httpStatusCode: http:STATUS_OK,
+                    httpStatusCode: exportTask.lastStatus == "In-progress" ? http:STATUS_ACCEPTED : http:STATUS_OK,
                     'resource: exportTask.toJson(),
                     serverResponseHeaders: {}
                 };
@@ -896,7 +897,7 @@ public isolated client class FHIRConnector {
             }
 
             if exportId is string {
-                check removeData(exportId, self.temporaryDirectory);
+                check removeData(exportId);
                 return {
                     httpStatusCode: http:STATUS_OK,
                     'resource: {
@@ -952,7 +953,7 @@ public isolated client class FHIRConnector {
             if exportId is string {
                 if resourceType is string {
                     log:printInfo("Downloading file for member: " + exportId + " and resource type: " + resourceType);
-                    string filePath = self.temporaryDirectory + Path_Seperator + exportId + Path_Seperator + resourceType + "-exported.ndjson";
+                    string filePath = DEFAULT_EXPORT_DIRECTORY + Path_Seperator + exportId + Path_Seperator + resourceType + "-exported.ndjson";
 
                     mime:Entity entity = new;
                     entity.setFileAsEntityBody(filePath);

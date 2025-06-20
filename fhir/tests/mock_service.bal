@@ -62,8 +62,10 @@ http:Service FhirMockService = service object {
                 response.setPayload(testGetResourceDataXml, FHIR_XML);
             }
         } else if 'type == PATIENT && id == EXPORT {
+            _ = start waitForPatientExport();
+
             response.statusCode = http:STATUS_ACCEPTED;
-            response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatus/1`);
+            response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatusPatient/1`);
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
             response.setPayload({ "status": "in-progress" }, FHIR_JSON);
             return response;
@@ -381,6 +383,26 @@ http:Service FhirMockService = service object {
         return response;
     }
 
+    resource function get exportStatusPatient/[string id]() returns http:Response {
+        http:Response response = new ();
+        boolean isEndOfExportClone;
+
+        lock {
+            isEndOfExportClone = isEndOfExport;
+        }
+
+        if !isEndOfExportClone {
+            response.statusCode = http:STATUS_ACCEPTED;
+            response.setHeader(X_PROGRESS, "Build in progress - Status set to BUILDING ");
+            response.setHeader(CONTENT_TYPE, FHIR_JSON);
+            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+        } else {
+            response.statusCode = http:STATUS_OK;
+            response.setPayload(testExportFileManifestData, FHIR_JSON);
+        }
+        return response;
+    }
+
     resource function delete exportStatus/[string id]() returns http:Response {
         http:Response response = new ();
         if id == "1" {
@@ -406,4 +428,3 @@ http:Service FhirMockService = service object {
     }
 
 };
-
