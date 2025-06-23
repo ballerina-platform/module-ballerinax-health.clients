@@ -19,7 +19,8 @@ A generic FHIR client module for Ballerina, enabling seamless integration with F
   - [Search Operations (GET and POST)](#search-operations-get-and-post)
   - [Invoking Custom FHIR Operations](#invoking-custom-fhir-operations)
   - [Bulk Data Operations](#bulk-data-operations)
-  - [Bulk Export Usage with FHIR Client](#bulk-export-usage-with-fhir-client)
+  - [CapabilityStatement Validation](#capabilitystatement-validation)
+- [Bulk Export Usage with FHIR Client](#bulk-export-usage-with-fhir-client)
 - [Advanced Features](#advanced-features)
 - [References](#references)
 
@@ -66,8 +67,7 @@ import ballerina/http;
 http:OAuth2ClientCredentialsGrantConfig ehrSystemAuthConfig = {
     tokenUrl: "<tokenUrl>",
     clientId: "<clientId>",
-    clientSecret: "<clientSecret>",
-    scopes: ["system/Patient.read", "system/Patient.write"]
+    clientSecret: "<clientSecret>"
 };
 ```
 
@@ -211,32 +211,59 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 
 ### Bulk Data Operations
 
-- **Start Bulk Export:**
+**Start Bulk Export:**
+
+```ballerina
+fhir_client:FHIRResponse|fhir_client:FHIRError response =
+    fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+```
+
+**Check Bulk Export Status:**
+
+- Using content-location URL (polling URL from kickoff response)
 
     ```ballerina
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+        fhirConnector->bulkStatus("https://example/fhir/bulkstatus/123456");
     ```
 
-- **Check Bulk Export Status:**
+- Using exportId (from kickoff response body)
 
     ```ballerina
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkStatus("<content-location-url>");
+        fhirConnector->bulkStatus(exportId = "123456");
     ```
 
-- **Download Exported File:**
+**Download Exported File:**
+
+- Using file URL (from status response)
 
     ```ballerina
     fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkFile("<file-url>");
+        fhirConnector->bulkFile(fileUrl = "https://example/fhir/files/Patient-123456.ndjson");
     ```
 
-- **Delete Bulk Export Data:**
+- Using exportId and resourceType
+
+    ```ballerina
+    fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkFile(exportId = "123456", resourceType = fhir_client:PATIENT);
+    ```
+
+**Delete Bulk Export Data:**
+
+- Using content-location URL
 
     ```ballerina
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkDataDelete("<content-location-url>");
+        fhirConnector->bulkDataDelete("https://example/fhir/bulkstatus/123456");
+    ```
+
+- Using exportId
+
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response =
+        fhirConnector->bulkDataDelete(exportId = "123456");
     ```
 
 ### CapabilityStatement Validation
@@ -255,11 +282,11 @@ To enable bulk export, you must configure the `bulkFileServerConfig` in your `FH
 
 ```ballerina
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
-    'type: "fhir", 
-    host: "eu-central-1.sftpcloud.io",
-    directory: "/target/files", 
-    username: "<username>",
-    password: "<password>"
+    'type: "fhir",           // or ftp
+    host: "<url>",           // host url of the server 
+    directory: "<dir-path>", // directory to save the exported files in the file server, if type is ftp
+    username: "<username>",  // username to access the server, if type is ftp
+    password: "<password>"   // password to access the server, if type if ftp
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
@@ -307,6 +334,44 @@ The typical steps for performing a bulk export are:
   Use `waitForBulkExportCompletion(exportId)` to ensure the main thread waits until the export process is complete before proceeding. This is important to avoid attempting to download files before they are ready.
 - **Service Applications:**
   This function is generally not needed, as service handlers are event-driven and can manage asynchronous operations differently.
+
+### Sample: Bulk Export with FHIR Client
+
+```ballerina
+import ballerinax/health.clients.fhir as fhir_client;
+
+fhir_client:BulkFileServerConfig bulkFileServerConfig = {
+    'type: "fhir", 
+    host: "www.example.com/bulk",
+    directory: "/target/files", 
+    username: "<username>",
+    password: "<password>"
+};
+
+fhir_client:FHIRConnectorConfig fhirServerConfig = {
+    baseURL: "https://bulk-data.smarthealthit.org/fhir",
+    mimeType: fhir_client:FHIR_JSON, 
+    bulkFileServerConfig: bulkFileServerConfig
+};
+
+fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
+
+public function main() returns error? {
+    // Start bulk export
+    fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+    json responseBody = response.'resource.toJson();
+    string exportId = check responseBody.exportId;
+
+    // Wait for export to complete (only needed in standalone/main)
+    fhir_client:waitForBulkExportCompletion(exportId);
+
+    // Download exported files
+    _ = check fhirConnector->bulkFile(exportId = exportId, resourceType = fhir_client:PATIENT);
+
+    // Delete exported files from server
+    _ = check fhirConnector->bulkDataDelete(exportId = exportId);
+}
+```
 
 ## Advanced Features
 

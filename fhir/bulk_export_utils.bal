@@ -20,6 +20,7 @@ import ballerina/http;
 import ballerina/io;
 import ballerina/log;
 import ballerina/task;
+import ballerina/mime;
 
 final string Path_Seperator = file:pathSeparator;
 
@@ -63,17 +64,17 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
 
 function sendFileFromFSToFTP(BulkFileServerConfig config, string sourcePath, string fileName) returns error? {
     ftp:Client fileClient = check new ({
-        host: config.host,
+        host: <string>config.host,
         auth: {
-            credentials: {
-                username: config.username,
-                password: config.password
-            }
+            credentials: (config.username is string && config.password is string) ? {
+                username: <string>config.username,
+                password: <string>config.password
+            } : ()
         }
     });
     stream<io:Block, io:Error?> fileStream
         = check io:fileReadBlocksAsStream(sourcePath, 1024);
-    check fileClient->put(string `${config.directory}/${fileName}`, fileStream);
+    check fileClient->put(string `${<string>config.directory}/${fileName}`, fileStream);
     check fileStream.close();
 }
 
@@ -204,4 +205,24 @@ isolated function removeData(string exportId) returns error? {
     } else {
         log:printDebug("Temporary directory does not exist.");
     }
+}
+
+isolated function getExportedFile(string exportId, string resourceType) returns FHIRBulkFileResponse|error {
+    string filePath = string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}${Path_Seperator}${resourceType}-exported.ndjson`;
+
+    if !check file:test(filePath, file:EXISTS) {
+        log:printDebug(string `Exported file not found for exportId: ${exportId} and resourceType: ${resourceType}`);
+        return error(string `Exported file not found for exportId: ${exportId} and resourceType: ${resourceType}, May be the export is not completed yet or the file has been removed.`);
+    }
+
+    mime:Entity entity = new;
+    entity.setFileAsEntityBody(filePath);
+
+    http:Response response = new;
+    response.setEntity(entity);
+    error? contentType = response.setContentType("gzip");
+    if contentType is error {
+        log:printError("Error occurred while setting the content type: ");
+    }
+    return getBulkFileResponse(response);
 }

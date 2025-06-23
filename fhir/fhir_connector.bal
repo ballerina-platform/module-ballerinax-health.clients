@@ -16,7 +16,6 @@
 
 import ballerina/http;
 import ballerina/log;
-import ballerina/mime;
 import ballerina/lang.runtime;
 import ballerina/uuid;
 import ballerinax/health.base.auth;
@@ -76,7 +75,10 @@ public isolated client class FHIRConnector {
 
         BulkFileServerConfig? bulkConfig = connectorConfig.bulkFileServerConfig;
         if bulkConfig is BulkFileServerConfig {
-            // initialize bulk file server http client
+            if  (bulkConfig.host is () || bulkConfig.directory is ()) {
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
+                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
+            }
             self.bulkFileServerConfig = {
                 'type: bulkConfig.'type,
                 directory: bulkConfig.directory,
@@ -978,19 +980,7 @@ public isolated client class FHIRConnector {
             
             if exportId is string {
                 if resourceType is string {
-                    log:printInfo("Downloading file for member: " + exportId + " and resource type: " + resourceType);
-                    string filePath = DEFAULT_EXPORT_DIRECTORY + Path_Seperator + exportId + Path_Seperator + resourceType + "-exported.ndjson";
-
-                    mime:Entity entity = new;
-                    entity.setFileAsEntityBody(filePath);
-
-                    http:Response response = new;
-                    response.setEntity(entity);
-                    error? contentType = response.setContentType("gzip");
-                    if contentType is error {
-                        log:printError("Error occurred while setting the content type: ");
-                    }
-                    return getBulkFileResponse(response);
+                    return check getExportedFile(exportId, resourceType);
                 } else {
                     log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`);
                     return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`, 
