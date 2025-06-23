@@ -66,8 +66,7 @@ import ballerina/http;
 http:OAuth2ClientCredentialsGrantConfig ehrSystemAuthConfig = {
     tokenUrl: "<tokenUrl>",
     clientId: "<clientId>",
-    clientSecret: "<clientSecret>",
-    scopes: ["system/Patient.read", "system/Patient.write"]
+    clientSecret: "<clientSecret>"
 };
 ```
 
@@ -256,8 +255,8 @@ To enable bulk export, you must configure the `bulkFileServerConfig` in your `FH
 ```ballerina
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
     'type: "fhir", 
-    host: "eu-central-1.sftpcloud.io",
-    directory: "/target/files", 
+    host: "<url>",
+    directory: "<dir-path>", 
     username: "<username>",
     password: "<password>"
 };
