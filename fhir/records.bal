@@ -1,4 +1,4 @@
-// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -16,6 +16,7 @@
 
 import ballerina/http;
 import ballerina/io;
+import ballerina/time;
 import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
@@ -89,10 +90,28 @@ public type FHIRConnectorConfig record {|
 # Configs of the file server where bulk export files will be stored
 #
 # + fileServerUrl - Bulk export file server base url
+# + defaultIntervalInSec - Default interval in seconds for the bulk export server to poll the file server for new files
+# + 'type - FHIR or FTP  
+# + host - host name of the server
+# + username - user name to access the server, for ftp
+# + password - password to access the server, for ftp
+# + directory - directory to save the exported files in the file server, for ftp
 public type BulkFileServerConfig record {|
     *http:ClientConfiguration;
     @display {label: "Bulk export file server base url"}
-    string fileServerUrl;
+    string? fileServerUrl = ();
+    @display {label: "Bulk export server interval in seconds"}
+    decimal? defaultIntervalInSec = ();
+    @display {label: "File server host url"}
+    string? host;
+    @display {label: "File server username"}
+    string? username;
+    @display {label: "File server password"}
+    string? password;
+    @display {label: "Directory to save exported files"}
+    string? directory;
+    @display {label: "File server type"}
+    "fhir"|"ftp" 'type;
 |};
 
 # Represents a success response coming from the fhir server side
@@ -104,7 +123,6 @@ public type FHIRResponse record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
-
 |};
 
 # Represents a bulk file response coming from the fhir server side
@@ -127,7 +145,6 @@ public type FHIRServerErrorDetails record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
-
 |};
 
 # Represents the error type for an unsuccessful interaction with the server 
@@ -191,7 +208,6 @@ public type BaseSearchParameters record {|
     string _content?;
     string _filter?;
     string _has?;
-
 |};
 
 # Represents parameters that can be used in a search interaction, add more name value pairs if necessary
@@ -249,4 +265,37 @@ type Pagination record {|
     string next?;
     string previous?;
     string self?;
+|};
+
+// record to map exported resource metadata.
+type OutputFile record {
+    string 'type;
+    string url;
+    int count;
+};
+
+// record to hold summary of exports.
+type ExportSummary record {
+    string transactionTime;
+    string request;
+    boolean requiresAccessToken;
+    OutputFile[] output;
+    string[] deleted;
+    string[] 'error;
+};
+
+// Use to keep track of each polling event.
+type PollingEvent record {|
+    string id;
+    string eventStatus;
+    string exportStatus?;
+    string progress?;
+|};
+
+// Use to keep track of ongoing/completed exports.
+type ExportTask record {|
+    string id;
+    time:Utc lastUpdated?;
+    string lastStatus;
+    PollingEvent[] pollingEvents;
 |};
