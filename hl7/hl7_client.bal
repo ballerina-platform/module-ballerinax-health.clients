@@ -53,16 +53,19 @@ type VID record {
 @display {label: "HL7 Client"}
 public isolated client class HL7Client {
 
-    final string host;
-    final int port;
+    final tcp:Client tcpClient;
 
     # Initialize HL7 client with given remote host and port.
     # + remoteHost - Remote host to connect to.
     # + remotePort - Remote port to connect to.
-    public isolated function init(string remoteHost, int remotePort) returns hl7v2:HL7Error? {
+    # + config - Optional TCP client configuration.
+    public isolated function init(string remoteHost, int remotePort, tcp:ClientConfiguration config = {}) returns hl7v2:HL7Error? {
 
-        self.host = remoteHost;
-        self.port = remotePort;
+        do {
+	        self.tcpClient = check new (remoteHost, remotePort, config);
+        } on fail var e {
+        	return error hl7v2:HL7Error(hl7v2:HL7_V2_CLIENT_ERROR, e, message = "Error occurred while initializing HL7 client.");
+        }
     }
 
     # Send a single HL7 message to given encoded HL7 message to given endpoint.
@@ -119,6 +122,19 @@ public isolated client class HL7Client {
         return error hl7v2:HL7Error(hl7v2:HL7_V2_CLIENT_ERROR, message = "Something went wrong sending HL7 message.");
     }
 
+    # Frees up the occupied socket.
+    # This function is used to close the TCP connection.
+    # 
+    # + return - Returns error if error occurred while closing the connection.
+    remote function close() returns hl7v2:HL7Error? {
+        do {
+            check self.tcpClient->close();
+        } on fail var e {
+            return error hl7v2:HL7Error(hl7v2:HL7_V2_CLIENT_ERROR, e, message = "Error occurred while closing HL7 client connection.");
+        }
+        return ();
+    }
+
     # This function is used to send HL7 message to given HL7 endpoint using TCP Client.
     #
     # + message - Byte stream of the HL7 message.
@@ -127,10 +143,8 @@ public isolated client class HL7Client {
 
         if message.length() > 0 {
             do {
-                tcp:Client tcpClient = check new (self.host, self.port);
-                check tcpClient->writeBytes(message);
-                readonly & byte[] receivedData = check tcpClient->readBytes();
-                check tcpClient->close();
+                check self.tcpClient->writeBytes(message);
+                readonly & byte[] receivedData = check self.tcpClient->readBytes();
                 return receivedData;
             } on fail var e {
                 return error hl7v2:HL7Error(hl7v2:HL7_V2_CLIENT_ERROR, e, message = "Error occurred while sending HL7 message.");
