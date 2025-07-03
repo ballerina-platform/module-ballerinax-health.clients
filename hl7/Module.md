@@ -78,46 +78,17 @@ public function main() returns error? {
 }
 ```
 
-## Classes
-
-### HL7Client
-
-Represents an isolated client that can be used to send HL7 messages to a remote server.
+#### Configuring Secure Connection
+To configure TLS for the HL7 client, you can pass a `secureSocket` configuration in the `tcp:ClientConfiguration` when initializing the client. This allows secure communication with the HL7 server.
 
 ```ballerina
-public isolated client class HL7Client {
-    // Client implementation
-}
+hl7:HL7Client hl7Client = check new("localhost", 9876, config = {
+    secureSocket: {
+        // public certificate for server verification
+        cert: "../resource/path/to/public.crt"
+    }
+});
 ```
-
-#### Methods
-
-##### `init`
-```ballerina
-public isolated function init(string remoteHost, int remotePort) returns hl7v2:HL7Error?
-```
-
-Initializes the HL7 client with the given remote host and port.
-
-###### Parameters
-- `remoteHost`: Remote host to connect to.
-- `remotePort`: Remote port to connect to.
-
-###### Return Value
-- `hl7v2:HL7Error?`: An error if initialization fails.
-
-##### `sendMessage`
-```ballerina
-remote function sendMessage(hl7v2:Message|byte[] message) returns hl7v2:Message|hl7v2:HL7Error
-```
-
-Sends a single HL7 message to the configured endpoint.
-
-###### Parameters
-- `message`: HL7 message as a record or encoded binary message. If a record is given, it will be encoded to a binary message.
-
-###### Return Value
-- `hl7v2:Message|hl7v2:HL7Error`: The HL7 response message or an error if one occurs.
 
 ## Error Handling
 
