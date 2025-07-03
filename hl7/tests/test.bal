@@ -66,10 +66,9 @@ function testHl7Client() returns error? {
         test:assertEquals(response.detail().message, "Error occurred while parsing HL7 response message.");
     }
 
-    HL7Client hl7clientForInvalidServer = check new ("localhost", 59550);
-    hl7v2:Message|hl7v2:HL7Error responseForInvalidServer = hl7clientForInvalidServer->sendMessage(tstMsg);
-    if responseForInvalidServer is hl7v2:HL7Error {
-        test:assertEquals(responseForInvalidServer.detail().message, "Package not found for HL7 version : 2.x");
+    HL7Client|hl7v2:HL7Error hl7clientForInvalidServer = new ("localhost", 59550);
+    if hl7clientForInvalidServer is hl7v2:HL7Error {
+        test:assertEquals(hl7clientForInvalidServer.detail().message, "Error occurred while initializing HL7 client.");
     }
 }
 
