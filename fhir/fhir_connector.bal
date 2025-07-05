@@ -54,8 +54,8 @@ public isolated client class FHIRConnector {
     # Initializes the FHIR client connector
     #
     # + connectorConfig - FHIR connector configurations
-    # + httpClientConfig - HTTP client configurations
-    public function init(FHIRConnectorConfig connectorConfig) returns error? {
+    # + enableCapabilityStatementValidation - Whether to validate the capability statement of the server
+    public isolated function init(FHIRConnectorConfig connectorConfig, boolean enableCapabilityStatementValidation = true) returns error? {
         self.baseUrl = connectorConfig.baseURL.endsWith(SLASH) 
             ? connectorConfig.baseURL.substring(0, connectorConfig.baseURL.length() - 1) 
             : connectorConfig.baseURL;
@@ -98,30 +98,33 @@ public isolated client class FHIRConnector {
             return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
         }
 
-        // get the capability statement of the server
-        log:printDebug(string `Retrieving the capability statement of the server`);
-        FHIRResponse|FHIRError capabilityResponse = check self->getConformance();
-        if capabilityResponse is FHIRError {
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, capabilityResponse);
-            return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, errorDetails = capabilityResponse);
-        } else {
-            log:printDebug(string `Successfully retrieved the capability statement of the server`);
-            string fhirVersion;
-            json resourceVal = <json>capabilityResponse.'resource;
-            
-            do {
-                fhirVersion = check resourceVal.fhirVersion;
-            } on fail {
-                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
-                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
-            }
-
-            if (isSupportedFhirVersion(fhirVersion)) {
-                log:printDebug(string `FHIR version ${fhirVersion} is supported`);
+        if enableCapabilityStatementValidation {
+            log:printDebug(string `Retrieving the capability statement of the server`);
+            FHIRResponse|FHIRError capabilityResponse = check self->getConformance();
+            if capabilityResponse is FHIRError {
+                log:printError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, capabilityResponse);
+                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unable to retrieve the capability statement of the server`, errorDetails = capabilityResponse);
             } else {
-                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
-                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
+                log:printDebug(string `Successfully retrieved the capability statement of the server`);
+                string fhirVersion;
+                json resourceVal = <json>capabilityResponse.'resource;
+                
+                do {
+                    fhirVersion = check resourceVal.fhirVersion;
+                } on fail var err{
+                    log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement, error: ${err.message()}`);
+                    return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
+                }
+
+                if (isSupportedFhirVersion(fhirVersion)) {
+                    log:printDebug(string `FHIR version ${fhirVersion} is supported`);
+                } else {
+                    log:printDebug(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
+                    return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: Unsupported FHIR version ${fhirVersion}`);
+                }
             }
+        } else {
+            log:printInfo(string `Capability statement validation is disabled, skipping capability statement retrieval`);
         }
     }
 
