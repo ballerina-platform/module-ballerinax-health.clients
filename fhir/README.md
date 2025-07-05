@@ -282,7 +282,7 @@ To enable bulk export, you must configure the `bulkFileServerConfig` in your `FH
 
 ```ballerina
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
-    'type: "fhir",           // or ftp
+    'type: "fhir",           // type of the file server 'fhir' or 'ftp'
     host: "<url>",           // host url of the server 
     directory: "<dir-path>", // directory to save the exported files in the file server, if type is ftp
     username: "<username>",  // username to access the server, if type is ftp
@@ -341,7 +341,7 @@ The typical steps for performing a bulk export are:
 import ballerinax/health.clients.fhir as fhir_client;
 
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
-    'type: "fhir", 
+    'type: "fhir",
     host: "www.example.com/bulk",
     directory: "/target/files", 
     username: "<username>",
