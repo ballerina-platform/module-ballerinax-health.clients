@@ -16,7 +16,6 @@
 
 import ballerina/http;
 import ballerina/io;
-import ballerina/time;
 import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
@@ -89,29 +88,36 @@ public type FHIRConnectorConfig record {|
 
 # Configs of the file server where bulk export files will be stored
 #
+# + fileServerType - fhir, ftp, or local
+#   - fhir: Sync the exported files with a FHIR server
+#   - ftp: Send the exported files to a FTP server
+#   - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
-# + defaultIntervalInSec - Default interval in seconds for the bulk export server to poll the file server for new files
-# + 'type - FHIR or FTP  
-# + host - host url of the server
-# + username - username to access the server, for ftp
-# + password - password to access the server, for ftp
-# + directory - directory to save the exported files in the file server, for ftp
+# + localDirectory - Local directory to save the exported files, for local file server
+# + fileServerUsername - Username to access the server, for ftp
+# + fileServerPassword - Password to access the server, for ftp
+# + fileServerDirectory - Directory to save the exported files in the file server, for ftp
+# + pollingIntervalInSec - Bulk status polling interval in seconds
+# + tempFileExpiryInSec - Expiration period for temporary export files in seconds
 public type BulkFileServerConfig record {|
     *http:ClientConfiguration;
+
+    @display {label: "File server type"}
+    "fhir"|"ftp"|"local" fileServerType = "local";
     @display {label: "Bulk export file server base url"}
     string? fileServerUrl = ();
-    @display {label: "Bulk export server interval in seconds"}
-    decimal? defaultIntervalInSec = ();
-    @display {label: "File server host url"}
-    string? host;
     @display {label: "File server username"}
-    string? username;
+    string? fileServerUsername = ();
     @display {label: "File server password"}
-    string? password;
+    string? fileServerPassword = ();
     @display {label: "Directory to save exported files"}
-    string? directory;
-    @display {label: "File server type"}
-    "fhir"|"ftp" 'type;
+    string? fileServerDirectory = ();
+    @display {label: "Bulk status polling interval in seconds"}
+    decimal pollingIntervalInSec = DEFAULT_POLLING_INTERVAL;
+    @display {label: "Local directory to save exported files"}
+    string localDirectory = DEFAULT_EXPORT_DIRECTORY;
+    @display {label: "Expiration period for temporary export files in seconds"}
+    decimal tempFileExpiryInSec = DEFAULT_TEMP_FILE_EXPIRY;
 |};
 
 # Represents a success response coming from the fhir server side
@@ -295,7 +301,7 @@ type PollingEvent record {|
 // Use to keep track of ongoing/completed exports.
 type ExportTask record {|
     string id;
-    time:Utc lastUpdated?;
+    string lastUpdated?;
     string lastStatus;
     PollingEvent[] pollingEvents;
 |};

@@ -41,7 +41,7 @@ This package provides a Ballerina connector to interact with FHIR servers, suppo
 
 ## Installation
 
-## Importing the Package
+### Importing the Package
 
 Install the package using the Ballerina package manager:
 
@@ -220,50 +220,18 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 
 **Check Bulk Export Status:**
 
-- Using content-location URL (polling URL from kickoff response)
+- Using content-location URL (polling URL from kickoff response):
 
     ```ballerina
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
         fhirConnector->bulkStatus("https://example/fhir/bulkstatus/123456");
     ```
 
-- Using exportId (from kickoff response body)
+- Using exportId (from kickoff response body):
 
     ```ballerina
     fhir_client:FHIRResponse|fhir_client:FHIRError response =
         fhirConnector->bulkStatus(exportId = "123456");
-    ```
-
-**Download Exported File:**
-
-- Using file URL (from status response)
-
-    ```ballerina
-    fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkFile(fileUrl = "https://example/fhir/files/Patient-123456.ndjson");
-    ```
-
-- Using exportId and resourceType
-
-    ```ballerina
-    fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkFile(exportId = "123456", resourceType = fhir_client:PATIENT);
-    ```
-
-**Delete Bulk Export Data:**
-
-- Using content-location URL
-
-    ```ballerina
-    fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkDataDelete("https://example/fhir/bulkstatus/123456");
-    ```
-
-- Using exportId
-
-    ```ballerina
-    fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkDataDelete(exportId = "123456");
     ```
 
 ### CapabilityStatement Validation
@@ -282,11 +250,14 @@ To enable bulk export, you must configure the `bulkFileServerConfig` in your `FH
 
 ```ballerina
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
-    'type: "fhir",           // type of the file server 'fhir' or 'ftp'
-    host: "<url>",           // host url of the server 
-    directory: "<dir-path>", // directory to save the exported files in the file server, if type is ftp
-    username: "<username>",  // username to access the server, if type is ftp
-    password: "<password>"   // password to access the server, if type if ftp
+    fileServerType: "local",                // type of the file server 'fhir', 'ftp' or 'local'
+    fileServerUrl: "<url>",                 // host url of the file server 
+    fileServerDirectory: "<dir-path>",      // directory to save the exported files in the file server, if type is ftp
+    fileServerUsername: "<username>",       // username to access the server, if type is ftp
+    fileServerPassword: "<password>",       // password to access the server, if type if ftp
+    localDirectory = "temp_bulk_export",    // local directory to save the exported files, for local file server, defualt = 'bulk_export'
+    pollingIntervalInSec: 2.0d,             // bulk status polling interval in seconds, defualt = 2.0d
+    tempFileExpiryInSec = 7200              // expiration period for temporary export files in seconds, defualt = 86400.0d
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
@@ -309,43 +280,32 @@ The typical steps for performing a bulk export are:
    string pollingUrl = check responseBody.pollingUrl;
    ```
 
-2. **Wait for export completion:**
-   Use `waitForBulkExportCompletion(exportId)` to block the main thread until the export is finished. This is especially useful in standalone applications (e.g., inside a `main` function). In service-based applications, this is usually not required.
+2. **Check export status and get file URLs:**
 
    ```ballerina
-   fhir_client:waitForBulkExportCompletion(exportId);
+   fhir_client:FHIRResponse response = check fhirConnector->bulkStatus(exportId = exportId);
+   if response.httpStatusCode == 200 {
+       json responseBody = response.'resource.toJson();
+       // responseBody contains the file URLs and export status
+   } else if response.httpStatusCode == 202 {
+       // Export is still in progress
+   }
    ```
 
-3. **Download the exported files:**
+> **Note:**  
+> When the export is completed, the `bulkStatus` function returns the file URLs as part of the response.  
+> If the export is still in progress, `bulkStatus` returns the current status of the export operation.
 
-   ```ballerina
-   fhir_client:FHIRResponse response = check fhirConnector->bulkFile(exportId = exportId, resourceType = fhir_client:PATIENT);
-   ```
-
-4. **Delete the exported files from the server:**
-
-   ```ballerina
-   fhir_client:FHIRResponse response = check fhirConnector->bulkDataDelete(exportId = exportId);
-   ```
-
-### 3. Use Case for `waitForBulkExportCompletion`
-
-- **Standalone Applications:**
-  Use `waitForBulkExportCompletion(exportId)` to ensure the main thread waits until the export process is complete before proceeding. This is important to avoid attempting to download files before they are ready.
-- **Service Applications:**
-  This function is generally not needed, as service handlers are event-driven and can manage asynchronous operations differently.
-
-### Sample: Bulk Export with FHIR Client
+### 3. Sample: Bulk Export with FHIR Client (Service Example)
 
 ```ballerina
+import ballerina/http;
 import ballerinax/health.clients.fhir as fhir_client;
 
 fhir_client:BulkFileServerConfig bulkFileServerConfig = {
-    'type: "fhir",
-    host: "www.example.com/bulk",
-    directory: "/target/files", 
-    username: "<username>",
-    password: "<password>"
+    fileServerType: "local",
+    tempFileExpiryInSec: 7200 // two hours
+    localDirectory: "temp_bulk_export"
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
@@ -354,22 +314,35 @@ fhir_client:FHIRConnectorConfig fhirServerConfig = {
     bulkFileServerConfig: bulkFileServerConfig
 };
 
-fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
+fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig, enableCapabilityStatementValidation = false);
 
-public function main() returns error? {
-    // Start bulk export
-    fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
-    json responseBody = response.'resource.toJson();
-    string exportId = check responseBody.exportId;
+type Export record {
+    string exportId;
+    string pollingUrl;
+};
 
-    // Wait for export to complete (only needed in standalone/main)
-    fhir_client:waitForBulkExportCompletion(exportId);
+service /Patient on new http:Listener(8080) {
+    resource function get export(http:Caller caller, http:Request req) returns error? {
+        fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+        json responseBody = response.'resource.toJson();
+        Export exportResult = {
+            exportId: check responseBody.exportId,
+            pollingUrl: check responseBody.pollingUrl
+        };
+        return caller->respond(exportResult);
+    }
 
-    // Download exported files
-    _ = check fhirConnector->bulkFile(exportId = exportId, resourceType = fhir_client:PATIENT);
-
-    // Delete exported files from server
-    _ = check fhirConnector->bulkDataDelete(exportId = exportId);
+    resource function get [string exportId]/status(http:Caller caller) returns error? {
+        fhir_client:FHIRResponse response = check fhirConnector->bulkStatus(exportId = exportId);
+        if response.httpStatusCode == 200 {
+            json responseBody = response.'resource.toJson();
+            return caller->respond(responseBody);
+        } else if response.httpStatusCode == 202 {
+            return caller->respond("Export is still in progress.");
+        } else {
+            return caller->respond("Export not found or an error occurred.");
+        }
+    }
 }
 ```
 

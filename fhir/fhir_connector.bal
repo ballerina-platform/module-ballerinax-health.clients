@@ -75,16 +75,19 @@ public isolated client class FHIRConnector {
 
         BulkFileServerConfig? bulkConfig = connectorConfig.bulkFileServerConfig;
         if bulkConfig is BulkFileServerConfig {
-            if  (bulkConfig.host is () || bulkConfig.directory is ()) {
+            if  (bulkConfig.fileServerUrl is () || bulkConfig.fileServerDirectory is ()) {
                 log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
                 return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
             }
             self.bulkFileServerConfig = {
-                'type: bulkConfig.'type,
-                directory: bulkConfig.directory,
-                host: bulkConfig.host,
-                username: bulkConfig.username,
-                password: bulkConfig.password
+                fileServerType: bulkConfig.fileServerType,
+                fileServerDirectory: bulkConfig.fileServerDirectory,
+                fileServerUrl: bulkConfig.fileServerUrl,
+                fileServerUsername: bulkConfig.fileServerUsername,
+                fileServerPassword: bulkConfig.fileServerPassword,
+                localDirectory: bulkConfig.localDirectory,
+                tempFileExpiryInSec: bulkConfig.tempFileExpiryInSec,
+                pollingIntervalInSec: bulkConfig.pollingIntervalInSec
             };
             self.fileServerUrl = bulkConfig.fileServerUrl;
             self.bulkFileHttpClient = bulkConfig.fileServerUrl is string ? (check new (<string>bulkConfig.fileServerUrl, constructHttpConfigs(bulkConfig))) : self.httpClient;
@@ -865,12 +868,29 @@ public isolated client class FHIRConnector {
         do {
             if exportId is string {    
                 // get the export task from memory using the exportId
-                ExportTask exportTask = check getExportTaskFromMemory(exportId);
-                return {
-                    httpStatusCode: exportTask.lastStatus == "In-progress" ? http:STATUS_ACCEPTED : http:STATUS_OK,
-                    'resource: exportTask.toJson(),
-                    serverResponseHeaders: {}
-                };
+                ExportTask|error exportTask = getExportTaskFromMemory(exportId);
+                if exportTask is error {
+                    json response;
+                    string exportDir = DEFAULT_EXPORT_DIRECTORY;
+                    lock {
+                        if self.bulkFileServerConfig is BulkFileServerConfig {
+                            BulkFileServerConfig config = <BulkFileServerConfig>self.bulkFileServerConfig;
+                            exportDir = config.localDirectory;
+                        }
+                    }
+                    response = check getExportedFileUrls(exportId, exportDir);
+                    return {
+                        httpStatusCode: 200,
+                        'resource: response,
+                        serverResponseHeaders: {}
+                    };
+                } else {
+                    return {
+                        httpStatusCode: exportTask.lastStatus == "In-progress" ? http:STATUS_ACCEPTED : http:STATUS_OK,
+                        'resource: exportTask.toJson(),
+                        serverResponseHeaders: {}
+                    };
+                }
             }
 
             if contentLocation is string {
@@ -893,107 +913,6 @@ public isolated client class FHIRConnector {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
             return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
                 errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
-        } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
-            if e is FHIRError {
-                return e;
-            }
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
-        }
-    } 
-
-    # Request to delete exported files on the server. Cancels the bulk export process if it is not completed.
-    #
-    # + contentLocation - Bulk status polling url. Found in the response header of the kickoff request
-    # + exportId - The unique identifier for the export task (used as the polling URL or status reference)
-    # + return - If successful, FhirResponse record else FhirError record
-    @display {label: "Check bulk data export progress"}
-    remote isolated function bulkDataDelete(@display {label: "Bulk status polling url"} string? contentLocation = (), 
-            @display {label: "Bulk export ID"} string? exportId = ())
-                                        returns FHIRResponse|FHIRError {
-        do {
-            if contentLocation is string {
-                // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-                string requestUrl = self.urlRewrite
-                    ? extractPath(contentLocation, <string>self.replacementURL)
-                    : extractPath(contentLocation, self.baseUrl);
-                map<string> headerMap = {};
-                log:printDebug(string `Request URL: ${requestUrl}`);
-                http:Response response = check self.httpClient->delete(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
-                FHIRResponse result = check getBulkExportResponse(response);
-                if self.urlRewrite {
-                    return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
-                }
-                return result;
-            }
-
-            if exportId is string {
-                check removeData(exportId);
-                return {
-                    httpStatusCode: http:STATUS_OK,
-                    'resource: {
-                        "message": "Export data deleted successfully.",
-                        "exportId": exportId
-                    },
-                    serverResponseHeaders: {}
-                };
-            }
-
-            // If neither exportId nor contentLocation is provided, return an error
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
-                errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
-        } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
-            if e is FHIRError {
-                return e;
-            }
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
-        }
-    }
-
-    # Request to get the exported bulk file
-    #
-    # + fileUrl - Bulk file url. Found in the response body of the bulk status request
-    #   - If provided, this URL is used to retrieve the exported file
-    # + exportId - The unique identifier for the export task (optional, used for logging purposes)
-    #   - If provided, this ID is used to log the export task details
-    # + resourceType - The type of the resource being exported (optional, used for logging purposes)
-    #   - If provided, this type is used to log the resource type being exported
-    # + additionalHeaders - Additional headers sent with the request
-    # + return - If successful, FhirBulkFileResponse record else FhirError record
-    @display {label: "Get exported file as a byte[] stream"}
-    remote isolated function bulkFile(@display {label: "Exported file url"} string? fileUrl = (),
-            @display {label: "Export ID"} string? exportId = (),
-            @display {label: "Resource Type"} ResourceType|string? resourceType = (),
-            @display {label: "Additional headers sent with the request"} map<string>? additionalHeaders = ())
-                                        returns FHIRBulkFileResponse|FHIRError {
-        do {
-            if fileUrl is string {
-                // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-                string requestUrl = self.urlRewrite
-                    ? extractPath(fileUrl, <string>self.replacementURL)
-                    : extractPath(fileUrl, self.fileServerUrl ?: self.baseUrl);
-                map<string> otherHeaders = additionalHeaders ?: {};
-                map<string> headerMap = {[ACCEPT_HEADER] : FHIR_ND_JSON, ...otherHeaders};
-                log:printDebug(string `Request URL: ${requestUrl}`);
-                http:Response response = check self.bulkFileHttpClient->get(requestUrl, headerMap);
-                return getBulkFileResponse(response);
-            } 
-            
-            if exportId is string {
-                if resourceType is string {
-                    return check getExportedFile(exportId, resourceType);
-                } else {
-                    log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`);
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}${exportId}`, 
-                        errorDetails = error(string `The 'fileUrl' parameter must be provided to retrieve the exported file for export ID: ${exportId}.`));
-                }
-            } 
-            
-            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}`);
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_URL_NOT_PROVIDED}`, 
-                errorDetails = error(string `The 'fileUrl' parameter must be provided to retrieve the exported file.`));
         } on fail error e {
             log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
@@ -1067,7 +986,7 @@ public isolated function waitForBulkExportCompletion(string exportId) {
         while true {
             ExportTask|error exportTask = getExportTaskFromMemory(exportId = exportId);
             if exportTask is ExportTask {
-                if exportTask.lastStatus == "Downloaded" {
+                if exportTask.lastStatus == "Export Completed. Files Downloaded." {
                     log:printInfo("Bulk export completed successfully.", exportId = exportId);
                     break;
                 }

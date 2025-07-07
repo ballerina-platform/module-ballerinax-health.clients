@@ -296,5 +296,6 @@ const PREV = "prev";
 const SELF = "self";
 
 # default values
-const DEFAULT_POLLING_INTERVAL = 2.0d;
+const DEFAULT_POLLING_INTERVAL = 2.0d; // 2 seconds
+const DEFAULT_TEMP_FILE_EXPIRY = 86400.0d; // 24 hours in seconds
 const DEFAULT_EXPORT_DIRECTORY = "bulk_export";

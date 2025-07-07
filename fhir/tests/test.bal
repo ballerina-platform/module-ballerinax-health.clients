@@ -16,7 +16,6 @@
 
 import ballerina/test;
 import ballerina/log;
-import ballerina/io;
 import ballerina/http;
 
 final string testServerBaseUrl = "/fhir_test_server/r4";
@@ -27,12 +26,13 @@ FHIRConnectorConfig config = {
     baseURL: localhost + testServerBaseUrl,
     mimeType: FHIR_JSON, 
     bulkFileServerConfig: {
-        defaultIntervalInSec: 0.5d,
-        username: "",
-        password: "",
-        host: localhost,
-        'type: "fhir",
-        directory: "/target/bulk_files"
+        pollingIntervalInSec: 0.5d,
+        fileServerUsername: "",
+        fileServerPassword: "",
+        fileServerUrl: localhost,
+        fileServerType: "local",
+        fileServerDirectory: "",
+        tempFileExpiryInSec: 60
     }
 };
 FHIRConnector fhirConnector;
@@ -43,12 +43,12 @@ FHIRConnectorConfig urlRewriteConfig = {
     urlRewrite: true,
     replacementURL: replacementUrl,
     bulkFileServerConfig: {
-        defaultIntervalInSec: 0.5d,
-        username: "",
-        password: "",
-        host: localhost,
-        'type: "fhir",
-        directory: "/target/bulk_files1"
+        pollingIntervalInSec: 0.5d,
+        fileServerUsername: "",
+        fileServerPassword: "",
+        fileServerUrl: localhost,
+        fileServerType: "local",
+        fileServerDirectory: "/target/bulk_files1"
     }
 };
 FHIRConnector urlRewriteConnector;
@@ -585,78 +585,10 @@ function testBulkExportStatus() returns FHIRError? {
 
 }
 
-@test:Config {}
-function testBulkExportCancel() returns FHIRError? {
-    // System export kick off
-    FHIRResponse result1 = check fhirConnector->bulkExport(EXPORT_SYSTEM);
-    string pollingUrl = result1.serverResponseHeaders[CONTENT_LOCATION.toLowerAscii()] ?: "";
-
-    // Cancel the export
-    FHIRResponse result2 = check fhirConnector->bulkDataDelete(pollingUrl);
-    test:assertEquals(result2.httpStatusCode, 202, "Failed to return the correct status code");
-    test:assertEquals(result2.'resource, testBulkExportCancelResponse, "Failed to return the bulk export cancel success payload");
-
-    // Using an invalid polling url
-    FHIRResponse|FHIRError result3 = fhirConnector->bulkDataDelete(string `${localhost}${testServerBaseUrl}/exportStatus/3`);
-    if result3 is FHIRError {
-        if result3 is FHIRServerError {
-            FHIRServerErrorDetails e = result3.detail();
-            test:assertEquals(e.httpStatusCode, 404, "Failed to return the correct status code");
-            test:assertEquals(e.'resource, testBulkExportCancelInvalidIDResponse, "Failed to return the correct error response payload");
-        } else {
-            test:assertFail("Failed to respond with the correct error type:FhirServerError");
-        }
-    } else {
-        test:assertFail("Failed to respond with the correct error");
-    }
-
-}
-
-@test:Config {}
-function testBulkExportFileAccess() returns error? {
-    // Polling the export status when export is completed
-    FHIRResponse result1 = check urlRewriteConnector->bulkStatus(string `${replacementUrl}/exportStatus/2`);
-    string fileUrl = (check (<json[]>(check (<json>result1.'resource).output))[0].url).toString();
-
-    // Accessing the file
-    FHIRBulkFileResponse result2 = check urlRewriteConnector->bulkFile(fileUrl);
-    test:assertEquals(result2.httpStatusCode, 200, "Failed to return the correct status code");
-
-    stream<byte[], io:Error?> fileStream = result2.dataStream;
-
-    byte[][] fileBytes = check from var i in fileStream
-        select i;
-
-    byte[] fileData = [];
-    foreach byte[] byteArr in fileBytes {
-        fileData.push(...byteArr);
-    }
-
-    string fileContent = check string:fromBytes(fileData);
-
-    test:assertEquals(fileContent, testBulkExportFileData, "Failed to return the correct file content");
-
-    // With invalid url
-    FHIRBulkFileResponse|FHIRError result3 = urlRewriteConnector->bulkFile(fileUrl + "invalid");
-    if result3 is FHIRError {
-        if result3 is FHIRServerError {
-            FHIRServerErrorDetails e = result3.detail();
-            test:assertEquals(e.httpStatusCode, 404, "Failed to return the correct status code");
-            test:assertEquals(e.'resource, testBulkFileInvalidIDResponse, "Failed to return the correct error response payload");
-        } else {
-            test:assertFail("Failed to respond with the correct error type:FhirServerError");
-        }
-    } else {
-        test:assertFail("Failed to respond with the correct error");
-    }
-}
-
 @test:Config {
     dependsOn: [
         testBulkExportKickOff,
-        testBulkExportStatus,
-        testBulkExportFileAccess,
-        testBulkExportCancel
+        testBulkExportStatus
     ]
 }
 function testBulkExportFullProcess() returns error? {
@@ -674,27 +606,15 @@ function testBulkExportFullProcess() returns error? {
     FHIRResponse result2 = check fhirConnector->bulkStatus(exportId = exportResult.exportId);
     test:assertEquals(result2.httpStatusCode, 202, "Failed to return the correct status code");
 
-    // can't request a file before the export is completed, should be an error
-    FHIRBulkFileResponse|FHIRError result3 = fhirConnector->bulkFile(exportId = exportResult.exportId, resourceType = PATIENT);
-    test:assertTrue(result3 is FHIRError, "Expected an error response before export completion");
-
     // wait for the export to complete
     waitForBulkExportCompletion(exportResult.exportId);
 
-    // Patient level export status check: not found after completion
-    FHIRResponse|FHIRError result4 = fhirConnector->bulkStatus(exportId = exportResult.exportId);
-    test:assertTrue(result4 is FHIRError, "Expected an error response after export completion");
-
     // create the export file (mocking the process of creating the export file)
-    check createExportFile(exportResult.exportId);
+    check createExportFile(exportResult.exportId, DEFAULT_EXPORT_DIRECTORY);
 
-    // get the files, should be assign to a variable to use later
-    FHIRBulkFileResponse result5 = check fhirConnector->bulkFile(exportId = exportResult.exportId, resourceType = PATIENT);
-    test:assertEquals(result5.httpStatusCode, 200, "Failed to return the correct status code for bulk file access");
-    
-    // delete the files from the memory
-    FHIRResponse result6 = check fhirConnector->bulkDataDelete(exportId = exportResult.exportId);
-    test:assertEquals(result6.httpStatusCode, 200, "Failed to return the correct status code for bulk data delete");
+    // Patient level export status check: got the completed export
+    FHIRResponse result4 = check fhirConnector->bulkStatus(exportId = exportResult.exportId);
+    test:assertEquals(result4.httpStatusCode, 200, "Failed to return the correct status code");
 }
 
 @test:Config {}
