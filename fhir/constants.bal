@@ -246,6 +246,7 @@ const EXPORT = "$export";
 
 # x-www-form-urlencoded content type
 const APPLICATION_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded";
+const APPLICATION_JSON = "application/json";
 
 # Server Status codes
 const STATUS_CODE_OK = 200;
@@ -281,6 +282,7 @@ const INVALID_CONDITIONAL_URL = "The provided conditional URL is invalid";
 const BULK_EXPORT_ID_NOT_PROVIDED = "Either exportId or contentLocation must be provided for the Bulk Export Status operation";
 const BULK_FILE_URL_NOT_PROVIDED = "Either fileUrl or exportId must be provided for the Bulk Export File operation";
 const BULK_FILE_SERVER_CONFIG_NOT_PROVIDED = "The target server configuration is not provided for the Bulk Export File operation";
+const BULK_EXPORT_NOT_COMPLETED_OR_REMOVED = "May be the export is not completed yet or the file has been removed.";
 
 # XML attributes
 const XML_ID = "id";
@@ -296,5 +298,6 @@ const PREV = "prev";
 const SELF = "self";
 
 # default values
-const DEFAULT_POLLING_INTERVAL = 2.0d;
+const DEFAULT_POLLING_INTERVAL = 2.0d; // 2 seconds
+const DEFAULT_TEMP_FILE_EXPIRY = 86400.0d; // 24 hours in seconds
 const DEFAULT_EXPORT_DIRECTORY = "bulk_export";

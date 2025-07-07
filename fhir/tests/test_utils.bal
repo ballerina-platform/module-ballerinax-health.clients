@@ -38,9 +38,9 @@ isolated function waitForPatientExport() {
     }
 }
 
-isolated function createExportFile(string exportId) returns error? {
-    string fileName = DEFAULT_EXPORT_DIRECTORY + Path_Seperator + exportId + Path_Seperator + PATIENT + "-exported.ndjson";
-    check file:createDir(DEFAULT_EXPORT_DIRECTORY + Path_Seperator + exportId, file:RECURSIVE);
+isolated function createExportFile(string exportId, string export_directory) returns error? {
+    string fileName = export_directory + PATH_SEPARATOR + exportId + PATH_SEPARATOR + PATIENT + "-exported.ndjson";
+    check file:createDir(export_directory + PATH_SEPARATOR + exportId, file:RECURSIVE);
     check file:create(fileName);
     
     log:printDebug("Export file created successfully.", fileName = fileName);

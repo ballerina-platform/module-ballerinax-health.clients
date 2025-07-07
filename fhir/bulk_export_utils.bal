@@ -20,9 +20,12 @@ import ballerina/http;
 import ballerina/io;
 import ballerina/log;
 import ballerina/task;
+import ballerina/regex;
+import ballerina/time;
+import ballerina/lang.runtime;
 import ballerina/mime;
 
-final string Path_Seperator = file:pathSeparator;
+final string PATH_SEPARATOR = file:pathSeparator;
 
 isolated function executeJob(PollingTask job, decimal interval) returns task:JobId|error? {
     task:JobId id = check task:scheduleJobRecurByFrequency(job, interval);
@@ -62,37 +65,59 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
     log:printDebug(string `Successfully downloaded the file. File name: ${fileName}`);
 }
 
-function sendFileFromFSToFTP(BulkFileServerConfig config, string sourcePath, string fileName) returns error? {
-    ftp:Client fileClient = check new ({
-        host: <string>config.host,
-        auth: {
-            credentials: (config.username is string && config.password is string) ? {
-                username: <string>config.username,
-                password: <string>config.password
-            } : ()
-        }
-    });
-    stream<io:Block, io:Error?> fileStream
-        = check io:fileReadBlocksAsStream(sourcePath, 1024);
-    check fileClient->put(string `${<string>config.directory}/${fileName}`, fileStream);
+function sendFileFromFSToFTP(ftp:Client fileClient, string fsFilePath, string ftpFilePath) returns error? {
+    stream<io:Block, io:Error?> fileStream = check io:fileReadBlocksAsStream(fsFilePath, 1024);
+    check fileClient->put(ftpFilePath, fileStream);
     check fileStream.close();
 }
 
-function downloadFiles(json exportSummary, string exportId, BulkFileServerConfig targetServerConfig) returns error? {
+function downloadFiles(json exportSummary, string exportId, BulkExportConfig config) returns error? {
     ExportSummary exportSummary1 = check exportSummary.cloneWithType(ExportSummary);
+    string export_directory = config.localDirectory;
+    ftp:Client? fileClient = ();
+
+    if config.fileServerType == "ftp" {
+        fileClient = check new ({
+            host: config.fileServerUrl,
+            port: config.fileServerPort,
+            auth: {
+                credentials: (config.fileServerUsername != "") ? {
+                    username: config.fileServerUsername,
+                    password: config.fileServerPassword
+                } : ()
+            }
+        });
+    }
+
     foreach OutputFile item in exportSummary1.output {
         log:printDebug("Downloading the file.", url = item.url);
-        error? downloadFileResult = saveFileInFS(item.url, string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}${Path_Seperator}${item.'type}-exported.ndjson`);
+
+        string fsFilePath = string `${export_directory}${PATH_SEPARATOR}${exportId}${PATH_SEPARATOR}${item.'type}-exported.ndjson`;
+        error? downloadFileResult = saveFileInFS(item.url, fsFilePath);
         if downloadFileResult is error {
             log:printError("Error occurred while downloading the file.", downloadFileResult);
+            continue;
         }
 
-        if targetServerConfig.'type == "ftp" {
-            // download the file to the FTP server
-            error? uploadFileResult = sendFileFromFSToFTP(targetServerConfig, string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${item.'type}-exported.ndjson`, string `${item.'type}-exported.ndjson`);
-            if uploadFileResult is error {
-                log:printError("Error occurred while sending the file to ftp.", downloadFileResult);
+        if config.fileServerType == "ftp" {
+            if fileClient is () {
+                continue;
             }
+            // path of the ftp server where the file will be uploaded
+            string ftpFilePath = string `${config.fileServerDirectory}/${exportId}/${item.'type}-exported.ndjson`;
+            error? uploadFileResult = sendFileFromFSToFTP(<ftp:Client>fileClient, fsFilePath, ftpFilePath);
+            if uploadFileResult is error {
+                log:printError("Error occurred while sending the file to ftp. " + uploadFileResult.message());
+            } else {
+                log:printDebug("File sent to FTP server successfully.", file = string `${item.'type}-exported.ndjson`);
+            }
+        } else if config.fileServerType == "fhir" {
+            // TODO: Implement FHIR repository/DB syncing functionality
+            // 1. Deduplication mechanism for exported FHIR resources
+            // 2. Maintaining traceability to original source systems
+            // 3. Data validation and transformation processes
+            // 4. Conflict resolution strategies for overlapping data
+            // Until these syncing pre-requisites are finalized, the operation
         }
     }
     lock {
@@ -107,7 +132,7 @@ class PollingTask {
     string exportId;
     string lastStatus;
     string location;
-    BulkFileServerConfig bulkFileServerConfig;
+    BulkExportConfig bulkExportConfig;
     task:JobId jobId = {id: 0};
 
     public function execute() {
@@ -134,12 +159,22 @@ class PollingTask {
 
                         // download the files
                         log:printDebug("Target server configuration is provided. Downloading files to the target server.");
-                        error? downloadFilesResult = downloadFiles(payload, self.exportId, self.bulkFileServerConfig);
+                        error? downloadFilesResult = downloadFiles(payload, self.exportId, self.bulkExportConfig);
                         if downloadFilesResult is error {
-                            log:printError("Error in downloading files", downloadFilesResult);
+                            log:printError("Error in downloading files. " + downloadFilesResult.message());
                         }
 
-                        removeExportTaskFromMemory(self.exportId);
+                        log:printDebug("Removing the export task from memory and local directory after expiry.");
+                        removeExportTaskFromMemory(self.exportId, self.bulkExportConfig.tempFileExpiryInSec);
+
+                        // Remove the data after expiry
+                        _ = start removeData(self.exportId, self.bulkExportConfig.localDirectory, self.bulkExportConfig.tempFileExpiryInSec);
+
+                        lock {
+                            updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = self.exportId, newStatus = "Export Completed. Files Downloaded.");
+                        }
+                        log:printDebug("Export task completed and files downloaded.", exportId = self.exportId);
+
                     } else if status == 202 {
                         log:printDebug("Export task in-progress.", exportId = self.exportId);
                         string progress = check statusResponse.getHeader(X_PROGRESS);
@@ -150,7 +185,7 @@ class PollingTask {
                         self.setLastStaus("In-progress");
                     }
                 } else {
-                    log:printError("Error occurred while getting the status.", statusResponse);
+                    log:printDebug("Error occurred while getting the status.", statusResponse);
                     lock {
                         PollingEvent pollingEvent = {id: self.exportId, eventStatus: "Failed"};
                         boolean _ = addPollingEventFuntion(exportTasks, pollingEvent.cloneReadOnly());
@@ -164,11 +199,23 @@ class PollingTask {
         }
     }
 
-    isolated function init(string exportId, string location, BulkFileServerConfig config) {
+    isolated function init(string exportId, string location, BulkExportConfig config) {
         self.exportId = exportId;
         self.lastStatus = "In-progress";
         self.location = location;
-        self.bulkFileServerConfig = config;
+        self.bulkExportConfig = config;
+        
+        do {
+            if check file:test(config.localDirectory, file:EXISTS) {
+                log:printDebug("Local directory exists.", localDirectory = config.localDirectory);
+            } else {
+                check file:createDir(config.localDirectory, file:RECURSIVE);
+                log:printDebug("Local directory created successfully.", localDirectory = config.localDirectory);
+            }
+        } on fail var err {
+            log:printError("Error occurred while creating the local directory.", err);
+            panic error(string `Error occurred while creating the local directory: ${err.message()}`);
+        }
     }
 
     function setLastStaus(string newStatus) {
@@ -180,39 +227,107 @@ class PollingTask {
     }
 }
 
-isolated function submitBackgroundJob(string taskId, string location, BulkFileServerConfig targetServerConfig) {
+isolated function submitBackgroundJob(string taskId, string location, BulkExportConfig config) {
     do {
         task:JobId|() _ = check executeJob(
                 new PollingTask(
                     exportId = taskId,
                     location = location,
-                    config = targetServerConfig
+                    config = config
                 ),
-                targetServerConfig.defaultIntervalInSec ?: DEFAULT_POLLING_INTERVAL);
+                config.pollingIntervalInSec);
         log:printDebug("Polling location recieved: " + location);
     } on fail var e {
         log:printError("Error occurred while getting the location or scheduling the Job", e);
     }
 }
 
-isolated function removeData(string exportId) returns error? {
-    log:printDebug("Removing data for export id: " + exportId);
-    removeExportTaskFromMemory(exportId);
-    string directoryPath = string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}`;
+isolated function removeData(string exportId, string export_directory, decimal expiryInSec) returns error? {
+    log:printDebug("Removing data for export id: " + exportId + " after expiry of " + expiryInSec.toString() + " seconds.");
+    worker name {
+        runtime:sleep(expiryInSec);
+    }
+    wait name;
+
+    log:printDebug("Removing data for export id: " + exportId + ", Directory: " + export_directory);
+    string directoryPath = string `${export_directory}${PATH_SEPARATOR}${exportId}`;
     if check file:test(directoryPath, file:EXISTS) {
         check file:remove(directoryPath, file:RECURSIVE);
         log:printDebug("Temporary directory removed successfully.");
     } else {
         log:printDebug("Temporary directory does not exist.");
     }
+    removeExpiredExportTask(exportId);
 }
 
-isolated function getExportedFile(string exportId, string resourceType) returns FHIRBulkFileResponse|error {
-    string filePath = string `${DEFAULT_EXPORT_DIRECTORY}${Path_Seperator}${exportId}${Path_Seperator}${resourceType}-exported.ndjson`;
+isolated function getExportedFileUrls(string exportId, BulkExportConfig config) returns map<json>|error {
+    string directoryPath = string `${config.localDirectory}${PATH_SEPARATOR}${exportId}`;
+    if !check file:test(directoryPath, file:EXISTS) {
+        log:printDebug("Exported files not found for exportId: " + exportId);
+        return error(string `Exported files not found for exportId: ${exportId}, May be the export is not completed yet or the files have been removed.`);
+    }
+    
+    json[] output = [];
+    if config.fileServerType == "ftp" {
+        ftp:Client fileClient = check new ({
+            host: config.fileServerUrl,
+            port: config.fileServerPort,
+            auth: {
+                credentials: (config.fileServerUsername != "") ? {
+                    username: config.fileServerUsername,
+                    password: config.fileServerPassword
+                } : ()
+            }
+        });
+
+        ftp:FileInfo[] fileDataList = check fileClient->list(string `${config.fileServerDirectory}/${exportId}`);
+
+        foreach ftp:FileInfo fileData in fileDataList {
+            string resourceType = regex:split(fileData.name, "-exported.ndjson")[0];
+            
+            output.push({
+                "url": fileData.friendlyURI,
+                "type": resourceType
+            });
+        }
+    } else {
+        file:MetaData[] exportedDir = check file:readDir(directoryPath);
+
+        foreach file:MetaData exportedFile in exportedDir {
+            string[] nonEmptyParts = regex:split(exportedFile.absPath, "\\\\").filter(s => s != "");
+            string lastPart = nonEmptyParts[nonEmptyParts.length() - 1];
+
+            // get the resource type from the file name
+            string resourceType = regex:split(lastPart, "-exported.ndjson")[0];
+
+            string absPath = exportedFile.absPath;
+            output.push({
+                "url": regex:replaceAll(absPath, "\\\\", PATH_SEPARATOR),
+                "type": resourceType
+            });
+        }
+    }
+
+    time:Utc expiryTime = check getExpiryTimeForExportTask(exportId);
+
+    return {
+        "exportId": exportId,
+        "expiryTime": time:utcToString(expiryTime),
+        "output": output
+    };
+}
+
+isolated function getExportedFile(string exportId, string resourceType, string export_directory) returns FHIRBulkFileResponse|error {
+    // check if the exportId is valid
+    time:Utc|error exportTaskExpiryTask = getExpiryTimeForExportTask(exportId);
+    if exportTaskExpiryTask is error {
+        return error(string `Export task not found for exportId: ${exportId}, ${BULK_EXPORT_NOT_COMPLETED_OR_REMOVED}`);
+    }
+
+    string filePath = string `${export_directory}${PATH_SEPARATOR}${exportId}${PATH_SEPARATOR}${resourceType}-exported.ndjson`;
 
     if !check file:test(filePath, file:EXISTS) {
-        log:printDebug(string `Exported file not found for exportId: ${exportId} and resourceType: ${resourceType}`);
-        return error(string `Exported file not found for exportId: ${exportId} and resourceType: ${resourceType}, May be the export is not completed yet or the file has been removed.`);
+        return error(string `Exported file not found for exportId: ${exportId} and resourceType: ${resourceType}, ${BULK_EXPORT_NOT_COMPLETED_OR_REMOVED}`);
     }
 
     mime:Entity entity = new;

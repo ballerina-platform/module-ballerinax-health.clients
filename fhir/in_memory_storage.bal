@@ -19,10 +19,11 @@ import ballerina/time;
 //This file represents the in-memory storage of the export tasks and polling events.
 
 final isolated map<ExportTask> exportTasks = {};
+final isolated map<time:Utc> exportTaskExpiryTimes = {};
 
 isolated function addExportTaskToMemory(map<ExportTask> taskMap, ExportTask exportTask) returns boolean {
     // add the export task to the memory
-    exportTask.lastUpdated = time:utcNow();
+    exportTask.lastUpdated = time:utcToString(time:utcNow());
     lock {
         taskMap[exportTask.id] = exportTask;
     }
@@ -32,7 +33,7 @@ isolated function addExportTaskToMemory(map<ExportTask> taskMap, ExportTask expo
 isolated function addPollingEventToMemory(map<ExportTask> taskMap, PollingEvent pollingEvent) returns boolean {
     // add the polling event to the memory
     ExportTask exportTask = taskMap.get(pollingEvent.id);
-    exportTask.lastUpdated = time:utcNow();
+    exportTask.lastUpdated = time:utcToString(time:utcNow());
     exportTask.lastStatus = pollingEvent.exportStatus ?: "In-progress";
     lock {
         taskMap.get(pollingEvent.id).pollingEvents.push(pollingEvent);
@@ -42,7 +43,7 @@ isolated function addPollingEventToMemory(map<ExportTask> taskMap, PollingEvent 
 
 isolated function updateExportTaskStatusInMemory(map<ExportTask> taskMap, string exportTaskId, string newStatus) {
     ExportTask exportTask = taskMap.get(exportTaskId);
-    exportTask.lastUpdated = time:utcNow();
+    exportTask.lastUpdated = time:utcToString(time:utcNow());
     exportTask.lastStatus = newStatus;
 }
 
@@ -57,9 +58,29 @@ isolated function getExportTaskFromMemory(string exportId) returns ExportTask|er
     }
 }
 
-isolated function removeExportTaskFromMemory(string exportId) {
+isolated function removeExportTaskFromMemory(string exportId, decimal expiryInSec) {
     lock {
         _ = exportTasks.removeIfHasKey(exportId);
+    }
+    lock {
+        exportTaskExpiryTimes[exportId] = time:utcAddSeconds(time:utcNow(), expiryInSec);
+    }
+}
+
+isolated function getExpiryTimeForExportTask(string exportId) returns time:Utc|error {
+    // get the expiry time for the export task
+    lock {
+        if exportTaskExpiryTimes.hasKey(exportId) {
+            return exportTaskExpiryTimes.get(exportId);
+        } else {
+            return error("Expiry time not found for export task id: " + exportId);
+        }
+    }
+}
+
+isolated function removeExpiredExportTask(string exportId) {
+    lock {
+        _ = exportTaskExpiryTimes.removeIfHasKey(exportId);
     }
 }
 

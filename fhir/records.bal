@@ -16,7 +16,6 @@
 
 import ballerina/http;
 import ballerina/io;
-import ballerina/time;
 import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
@@ -26,7 +25,7 @@ import ballerinax/health.base.auth;
 # + authConfig - Authentication configs that will be used to create the http client  
 # + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well  
 # + replacementURL - Base url of the service to rewrite FHIR server URLs  
-# + bulkFileServerConfig - Bulk export file server configs  
+# + bulkExportConfig - Bulk export file server configs  
 # + httpVersion - The HTTP version understood by the client  
 # + http1Settings - Configurations related to HTTP/1.x protocol
 # + http2Settings - Configurations related to HTTP/2 protocol  
@@ -54,7 +53,7 @@ public type FHIRConnectorConfig record {|
     @display {label: "Base url of the service to rewrite FHIR server URLs"}
     string replacementURL?;
     @display {label: "Bulk export file server configs"}
-    BulkFileServerConfig bulkFileServerConfig?;
+    BulkExportConfig bulkExportConfig?;
     @display {label:"The HTTP version understood by the client"}
     http:HttpVersion httpVersion = http:HTTP_2_0;
     @display {label:"Configurations related to HTTP/1.x protocol"}
@@ -89,29 +88,39 @@ public type FHIRConnectorConfig record {|
 
 # Configs of the file server where bulk export files will be stored
 #
+# + fileServerType - fhir, ftp, or local
+#   - fhir: Sync the exported files with a FHIR server
+#   - ftp: Send the exported files to a FTP server
+#   - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
-# + defaultIntervalInSec - Default interval in seconds for the bulk export server to poll the file server for new files
-# + 'type - FHIR or FTP  
-# + host - host url of the server
-# + username - username to access the server, for ftp
-# + password - password to access the server, for ftp
-# + directory - directory to save the exported files in the file server, for ftp
-public type BulkFileServerConfig record {|
+# + localDirectory - Local directory to save the exported files, for local file server
+# + fileServerUsername - Username to access the server, for ftp
+# + fileServerPassword - Password to access the server, for ftp
+# + fileServerDirectory - Directory to save the exported files in the file server, for ftp
+# + fileServerPort - Port to access the file server, default is 21
+# + pollingIntervalInSec - Bulk status polling interval in seconds
+# + tempFileExpiryInSec - Expiration period for temporary export files in seconds
+public type BulkExportConfig record {|
     *http:ClientConfiguration;
-    @display {label: "Bulk export file server base url"}
-    string? fileServerUrl = ();
-    @display {label: "Bulk export server interval in seconds"}
-    decimal? defaultIntervalInSec = ();
-    @display {label: "File server host url"}
-    string? host;
-    @display {label: "File server username"}
-    string? username;
-    @display {label: "File server password"}
-    string? password;
-    @display {label: "Directory to save exported files"}
-    string? directory;
+
     @display {label: "File server type"}
-    "fhir"|"ftp" 'type;
+    "fhir"|"ftp"|"local" fileServerType = "local";
+    @display {label: "Bulk export file server base url"}
+    string fileServerUrl = "";
+    @display {label: "File server port"}
+    int fileServerPort = 21;
+    @display {label: "File server username"}
+    string fileServerUsername = "";
+    @display {label: "File server password"}
+    string fileServerPassword = "";
+    @display {label: "Directory to save exported files"}
+    string fileServerDirectory = "";
+    @display {label: "Bulk status polling interval in seconds"}
+    decimal pollingIntervalInSec = DEFAULT_POLLING_INTERVAL;
+    @display {label: "Local directory to save exported files"}
+    string localDirectory = DEFAULT_EXPORT_DIRECTORY;
+    @display {label: "Expiration period for temporary export files in seconds"}
+    decimal tempFileExpiryInSec = DEFAULT_TEMP_FILE_EXPIRY;
 |};
 
 # Represents a success response coming from the fhir server side
@@ -295,7 +304,7 @@ type PollingEvent record {|
 // Use to keep track of ongoing/completed exports.
 type ExportTask record {|
     string id;
-    time:Utc lastUpdated?;
+    string lastUpdated?;
     string lastStatus;
     PollingEvent[] pollingEvents;
 |};
