@@ -38,6 +38,14 @@ isolated function waitForPatientExport() {
     }
 }
 
+isolated function waitForExpiringExport(decimal seconds) {
+    worker waitForExpire {
+        runtime:sleep(seconds);
+    }
+
+    wait waitForExpire;
+}
+
 isolated function createExportFile(string exportId, string export_directory) returns error? {
     string fileName = export_directory + PATH_SEPARATOR + exportId + PATH_SEPARATOR + PATIENT + "-exported.ndjson";
     check file:createDir(export_directory + PATH_SEPARATOR + exportId, file:RECURSIVE);

@@ -17,22 +17,22 @@
 import ballerina/test;
 import ballerina/log;
 import ballerina/http;
+import ballerina/io;
 
 final string testServerBaseUrl = "/fhir_test_server/r4";
 final string localhost = "http://localhost:8080";
 final string replacementUrl = "http://localhost:8181/fhir";
+final decimal waitForExpire = 20; // seconds
 
 FHIRConnectorConfig config = {
     baseURL: localhost + testServerBaseUrl,
     mimeType: FHIR_JSON, 
-    bulkFileServerConfig: {
+    bulkExportConfig: {
+        fileServerType: "local", // use 'ftp' to test with FTP server
+        fileServerUrl: "localhost",
+        fileServerDirectory: "/exports",
         pollingIntervalInSec: 0.5d,
-        fileServerUsername: "",
-        fileServerPassword: "",
-        fileServerUrl: localhost,
-        fileServerType: "local",
-        fileServerDirectory: "",
-        tempFileExpiryInSec: 60
+        tempFileExpiryInSec: waitForExpire
     }
 };
 FHIRConnector fhirConnector;
@@ -42,13 +42,9 @@ FHIRConnectorConfig urlRewriteConfig = {
     mimeType: FHIR_JSON,
     urlRewrite: true,
     replacementURL: replacementUrl,
-    bulkFileServerConfig: {
-        pollingIntervalInSec: 0.5d,
-        fileServerUsername: "",
-        fileServerPassword: "",
-        fileServerUrl: localhost,
+    bulkExportConfig: {
         fileServerType: "local",
-        fileServerDirectory: "/target/bulk_files1"
+        pollingIntervalInSec: 0.5d
     }
 };
 FHIRConnector urlRewriteConnector;
@@ -615,6 +611,46 @@ function testBulkExportFullProcess() returns error? {
     // Patient level export status check: got the completed export
     FHIRResponse result4 = check fhirConnector->bulkStatus(exportId = exportResult.exportId);
     test:assertEquals(result4.httpStatusCode, 200, "Failed to return the correct status code");
+
+    // check the exported file manifest
+    FHIRBulkFileResponse result3 = check fhirConnector->bulkFile(exportResult.exportId, "Patient");
+    test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
+    stream<byte[], io:Error?> fileStream = result3.dataStream;
+    byte[][] fileBytes = check from var i in fileStream
+        select i;
+    byte[] fileData = [];
+    foreach byte[] byteArr in fileBytes {
+        fileData.push(...byteArr);
+    }
+    string fileContent = check string:fromBytes(fileData);
+    test:assertEquals(fileContent, testBulkExportFileData, "Failed to return the correct file content");
+
+    // invalid export ID
+    FHIRBulkFileResponse|FHIRError result5 = fhirConnector->bulkFile("invalidExportId", "Patient");
+    if result5 is FHIRError {
+        if result5 is FHIRServerError {
+            FHIRServerErrorDetails e = result5.detail();
+            test:assertEquals(e.httpStatusCode, 400, "Failed to return the correct status code for invalid export ID");
+        } else {
+            test:assertFail("Failed to respond with the correct error type:FhirServerError for invalid export ID");
+        }
+    } else {
+        test:assertFail("Failed to respond with the correct error for invalid export ID");
+    }
+
+    waitForExpiringExport(waitForExpire);
+
+    FHIRResponse|FHIRError result6 = fhirConnector->bulkStatus(exportId = exportResult.exportId);
+    if result6 is FHIRError {
+        if result6 is FHIRServerError {
+            FHIRServerErrorDetails e = result6.detail();
+            test:assertEquals(e.httpStatusCode, 410, "Failed to return the correct status code for expired export");
+        } else {
+            test:assertFail("Failed to respond with the correct error type:FhirServerError for expired export");
+        }
+    } else {
+        test:assertFail("Failed to respond with the correct error for expired export");
+    }
 }
 
 @test:Config {}

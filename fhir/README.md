@@ -16,7 +16,7 @@ A generic FHIR client module for Ballerina, enabling seamless integration with F
     - [Update a Resource](#update-a-resource)
     - [Patch a Resource](#patch-a-resource)
     - [Delete a Resource](#delete-a-resource)
-  - [Search Operations (GET and POST)](#search-operations-get-and-post)
+  - [Search Operation (GET and POST)](#search-operation-get-and-post)
   - [Invoking Custom FHIR Operations](#invoking-custom-fhir-operations)
   - [Bulk Data Operations](#bulk-data-operations)
   - [CapabilityStatement Validation](#capabilitystatement-validation)
@@ -93,20 +93,18 @@ fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
 
 #### Create a Resource
 
-**Standard (Non-Conditional) Create:**
+- **Standard (Non-Conditional) Create:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->create(resourceJson);
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->create(resourceJson);
+    ```
 
-**Conditional Create:**
+- **Conditional Create:**
 
-```ballerina
-map<string[]> condition = { "identifier": ["12345"] };
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->create(resourceJson, onCondition = condition);
-```
+    ```ballerina
+    map<string[]> condition = { "identifier": ["12345"] };
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->create(resourceJson, onCondition = condition);
+    ```
 
 #### Read a Resource
 
@@ -117,70 +115,62 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 
 #### Update a Resource
 
-**Standard (Non-Conditional) Update:**
+- **Standard (Non-Conditional) Update:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->update(resourceJson);
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->update(resourceJson);
+    ```
 
-**Conditional Update:**
+- **Conditional Update:**
 
-```ballerina
-map<string[]> condition = { "identifier": ["12345"] };
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->update(resourceJson, onCondition = condition);
-```
+    ```ballerina
+    map<string[]> condition = { "identifier": ["12345"] };
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->update(resourceJson, onCondition = condition);
+    ```
 
 #### Patch a Resource
 
-**Standard (Non-Conditional) Patch:**
+- **Standard (Non-Conditional) Patch:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->patch("Patient", patchData, id = "123");
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->patch("Patient", patchData, id = "123");
+    ```
 
-**Conditional Patch:**
+- **Conditional Patch:**
 
-```ballerina
-map<string[]> condition = { "identifier": ["12345"] };
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->patch("Patient", patchData, onCondition = condition);
-```
+    ```ballerina
+    map<string[]> condition = { "identifier": ["12345"] };
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->patch("Patient", patchData, onCondition = condition);
+    ```
 
 #### Delete a Resource
 
-**Standard (Non-Conditional) Delete:**
+- **Standard (Non-Conditional) Delete:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->delete("Patient", id = "123");
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->delete("Patient", id = "123");
+    ```
 
-**Conditional Delete:**
+- **Conditional Delete:**
 
-```ballerina
-map<string[]> condition = { "identifier": ["12345"] };
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->delete("Patient", onCondition = condition);
-```
+    ```ballerina
+    map<string[]> condition = { "identifier": ["12345"] };
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->delete("Patient", onCondition = condition);
+    ```
 
-### Search Operations (GET and POST)
+### Search Operation (GET and POST)
 
-**GET Search:**
+- **GET Search:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->search("Patient", searchParameters = { "name": ["John"] });
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->search("Patient", searchParameters = { "name": ["John"] });
+    ```
 
-**POST Search:**
+- **POST Search:**
 
-```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->search("Patient", mode = fhir_client:POST, searchParameters = { "name": ["John"] });
-```
+    ```ballerina
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->search("Patient", mode = fhir_client:POST, searchParameters = { "name": ["John"] });
+    ```
 
 ### Invoking Custom FHIR Operations
 
@@ -201,12 +191,10 @@ This allows you to control whether the FHIR operation is called using GET or POS
 
 ```ballerina
 // Invoke a custom operation using POST (default)
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->callOperation("Patient", operationName = "everything", data = {});
+fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->callOperation("Patient", operationName = "everything", data = {});
 
 // Invoke a custom operation using GET
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->callOperation("Patient", operationName = "everything", mode = http:GET, id = "123");
+fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->callOperation("Patient", operationName = "everything", mode = http:GET, id = "123");
 ```
 
 ### Bulk Data Operations
@@ -214,8 +202,7 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 **Start Bulk Export:**
 
 ```ballerina
-fhir_client:FHIRResponse|fhir_client:FHIRError response =
-    fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
+fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
 ```
 
 **Check Bulk Export Status:**
@@ -223,16 +210,20 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
 - Using content-location URL (polling URL from kickoff response):
 
     ```ballerina
-    fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkStatus("https://example/fhir/bulkstatus/123456");
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkStatus("https://example/fhir/bulkstatus/123456");
     ```
 
 - Using exportId (from kickoff response body):
 
     ```ballerina
-    fhir_client:FHIRResponse|fhir_client:FHIRError response =
-        fhirConnector->bulkStatus(exportId = "123456");
+    fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkStatus(exportId = "123456");
     ```
+
+**Download Exported File:**
+
+```ballerina
+fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response = fhirConnector->bulkFile(exportId, fhir_client:EXPORT_PATIENT);
+```
 
 ### CapabilityStatement Validation
 
@@ -244,92 +235,62 @@ When initializing the `FHIRConnector`, the connector automatically retrieves and
 
 This section describes how to use the bulk export functions provided by the FHIR client, including configuration, execution flow, and example code.
 
-### 1. Configuring `bulkFileServerConfig`
+### 1. Configuring `bulkExportConfig`
 
-To enable bulk export, you must configure the `bulkFileServerConfig` in your `FHIRConnectorConfig`. This configuration specifies the file server details where exported files will be stored or retrieved from. Example configuration:
+To enable bulk export, you must configure the `bulkExportConfig` in your `FHIRConnectorConfig`. This configuration specifies the file server details where exported files will be stored or retrieved from. Example configuration:
 
 ```ballerina
-fhir_client:BulkFileServerConfig bulkFileServerConfig = {
+fhir_client:BulkExportConfig bulkExportConfig = {
     fileServerType: "local",                // type of the file server 'fhir', 'ftp' or 'local'
     fileServerUrl: "<url>",                 // host url of the file server 
     fileServerDirectory: "<dir-path>",      // directory to save the exported files in the file server, if type is ftp
+    fileServerPort: 21,                     // port of the file server (ftp), default = 21 
     fileServerUsername: "<username>",       // username to access the server, if type is ftp
     fileServerPassword: "<password>",       // password to access the server, if type if ftp
-    localDirectory = "temp_bulk_export",    // local directory to save the exported files, for local file server, defualt = 'bulk_export'
-    pollingIntervalInSec: 2.0d,             // bulk status polling interval in seconds, defualt = 2.0d
-    tempFileExpiryInSec = 7200              // expiration period for temporary export files in seconds, defualt = 86400.0d
+    localDirectory = "temp_bulk_export",    // local directory to save the exported files, for local file server, default = 'bulk_export'
+    pollingIntervalInSec: 2.0d,             // bulk status polling interval in seconds, default = 2.0d
+    tempFileExpiryInSec = 7200              // expiration period for temporary export files in seconds, default = 86400.0d
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
     baseURL: "https://bulk-data.smarthealthit.org/fhir",
     mimeType: fhir_client:FHIR_JSON, 
-    bulkFileServerConfig: bulkFileServerConfig
+    bulkExportConfig: bulkExportConfig
 };
 ```
-
-### 2. Bulk Export Execution Flow
-
-The typical steps for performing a bulk export are:
-
-1. **Start the bulk export:**
-
-   ```ballerina
-   fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
-   json responseBody = response.'resource.toJson();
-   string exportId = check responseBody.exportId;
-   string pollingUrl = check responseBody.pollingUrl;
-   ```
-
-2. **Check export status and get file URLs:**
-
-   ```ballerina
-   fhir_client:FHIRResponse response = check fhirConnector->bulkStatus(exportId = exportId);
-   if response.httpStatusCode == 200 {
-       json responseBody = response.'resource.toJson();
-       // responseBody contains the file URLs and export status
-   } else if response.httpStatusCode == 202 {
-       // Export is still in progress
-   }
-   ```
 
 > **Note:**  
 > When the export is completed, the `bulkStatus` function returns the file URLs as part of the response.  
 > If the export is still in progress, `bulkStatus` returns the current status of the export operation.
 
-### 3. Sample: Bulk Export with FHIR Client (Service Example)
+### 2. Sample: Bulk Export with FHIR Client (Service Example)
 
 ```ballerina
 import ballerina/http;
 import ballerinax/health.clients.fhir as fhir_client;
 
-fhir_client:BulkFileServerConfig bulkFileServerConfig = {
+fhir_client:BulkExportConfig bulkExportConfig = {
     fileServerType: "local",
-    tempFileExpiryInSec: 7200 // two hours
+    tempFileExpiryInSec: 7200, // two hours
     localDirectory: "temp_bulk_export"
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
     baseURL: "https://bulk-data.smarthealthit.org/fhir",
     mimeType: fhir_client:FHIR_JSON, 
-    bulkFileServerConfig: bulkFileServerConfig
+    bulkExportConfig: bulkExportConfig
 };
 
 fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig, enableCapabilityStatementValidation = false);
-
-type Export record {
-    string exportId;
-    string pollingUrl;
-};
 
 service /Patient on new http:Listener(8080) {
     resource function get export(http:Caller caller, http:Request req) returns error? {
         fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
         json responseBody = response.'resource.toJson();
-        Export exportResult = {
+        return caller->respond({
             exportId: check responseBody.exportId,
             pollingUrl: check responseBody.pollingUrl
-        };
-        return caller->respond(exportResult);
+        });
     }
 
     resource function get [string exportId]/status(http:Caller caller) returns error? {
@@ -348,7 +309,7 @@ service /Patient on new http:Listener(8080) {
 
 ## Advanced Features
 
-- **Bulk Data Export**: Configure `bulkFileServerConfig` in the connector config to support file servers for exported data.
+- **Bulk Data Export**: Configure `bulkExportConfig` in the connector config to support file servers for exported data.
 - **URL Rewriting**: Enable `urlRewrite` and set `replacementURL` in the config to rewrite FHIR server URLs in responses.
 - **PKJWT Authentication**: Supported via `auth:PKJWTAuthConfig`.
 

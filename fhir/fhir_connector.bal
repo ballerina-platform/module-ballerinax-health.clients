@@ -878,7 +878,8 @@ public isolated client class FHIRConnector {
                         response = getExportedFileUrls(exportId, <BulkExportConfig>self.bulkExportConfig).clone();
                     }
                     if response is error {
-                        return error(string `${FHIR_CONNECTOR_ERROR}: ${response.message()}`, errorDetails = response);
+                        return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${response.message()}`, 
+                            httpStatusCode = 410, 'resource = response.message(), serverResponseHeaders = {});
                     }
                     return {
                         httpStatusCode: 200,
@@ -943,7 +944,12 @@ public isolated client class FHIRConnector {
                 }
                 export_directory = (<BulkExportConfig>self.bulkExportConfig).localDirectory;
             }
-            return check getExportedFile(exportId, resourceType, export_directory); 
+            FHIRBulkFileResponse|error exportedFile = getExportedFile(exportId, resourceType, export_directory); 
+            if exportedFile is error {
+                return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${exportedFile.message()}`, httpStatusCode = 400, 'resource = exportedFile.message(), serverResponseHeaders = {});
+            } else {
+                return exportedFile;
+            }
         } on fail error e {
             log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
