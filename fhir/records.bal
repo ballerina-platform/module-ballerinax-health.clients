@@ -25,7 +25,7 @@ import ballerinax/health.base.auth;
 # + authConfig - Authentication configs that will be used to create the http client  
 # + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well  
 # + replacementURL - Base url of the service to rewrite FHIR server URLs  
-# + bulkFileServerConfig - Bulk export file server configs  
+# + bulkExportConfig - Bulk export file server configs  
 # + httpVersion - The HTTP version understood by the client  
 # + http1Settings - Configurations related to HTTP/1.x protocol
 # + http2Settings - Configurations related to HTTP/2 protocol  
@@ -53,7 +53,7 @@ public type FHIRConnectorConfig record {|
     @display {label: "Base url of the service to rewrite FHIR server URLs"}
     string replacementURL?;
     @display {label: "Bulk export file server configs"}
-    BulkFileServerConfig bulkFileServerConfig?;
+    BulkExportConfig bulkExportConfig?;
     @display {label:"The HTTP version understood by the client"}
     http:HttpVersion httpVersion = http:HTTP_2_0;
     @display {label:"Configurations related to HTTP/1.x protocol"}
@@ -97,21 +97,24 @@ public type FHIRConnectorConfig record {|
 # + fileServerUsername - Username to access the server, for ftp
 # + fileServerPassword - Password to access the server, for ftp
 # + fileServerDirectory - Directory to save the exported files in the file server, for ftp
+# + fileServerPort - Port to access the file server, default is 21
 # + pollingIntervalInSec - Bulk status polling interval in seconds
 # + tempFileExpiryInSec - Expiration period for temporary export files in seconds
-public type BulkFileServerConfig record {|
+public type BulkExportConfig record {|
     *http:ClientConfiguration;
 
     @display {label: "File server type"}
     "fhir"|"ftp"|"local" fileServerType = "local";
     @display {label: "Bulk export file server base url"}
-    string? fileServerUrl = ();
+    string fileServerUrl = "";
+    @display {label: "File server port"}
+    int fileServerPort = 21;
     @display {label: "File server username"}
-    string? fileServerUsername = ();
+    string fileServerUsername = "";
     @display {label: "File server password"}
-    string? fileServerPassword = ();
+    string fileServerPassword = "";
     @display {label: "Directory to save exported files"}
-    string? fileServerDirectory = ();
+    string fileServerDirectory = "";
     @display {label: "Bulk status polling interval in seconds"}
     decimal pollingIntervalInSec = DEFAULT_POLLING_INTERVAL;
     @display {label: "Local directory to save exported files"}

@@ -626,7 +626,7 @@ isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string
     }
 }
 
-isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig config) returns http:ClientConfiguration {
+isolated function constructHttpConfigs(FHIRConnectorConfig|BulkExportConfig config) returns http:ClientConfiguration {
     http:ClientConfiguration httpConfig = {
         httpVersion: config.httpVersion,
         http1Settings: config.http1Settings.cloneReadOnly(),

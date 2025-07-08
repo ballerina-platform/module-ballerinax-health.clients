@@ -49,7 +49,7 @@ public isolated client class FHIRConnector {
     private final string? fileServerUrl;
 
     # The bulk file server configurations
-    private final BulkFileServerConfig? bulkFileServerConfig;
+    private final BulkExportConfig? bulkExportConfig;
 
     # Initializes the FHIR client connector
     #
@@ -73,28 +73,25 @@ public isolated client class FHIRConnector {
             self.pkjwtHanlder = new (authConfig);
         }
 
-        BulkFileServerConfig? bulkConfig = connectorConfig.bulkFileServerConfig;
-        if bulkConfig is BulkFileServerConfig {
-            if  (bulkConfig.fileServerUrl is () || bulkConfig.fileServerDirectory is ()) {
-                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
-                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'host' and 'directory' properties are required for bulk file server configuration`);
-            }
-            self.bulkFileServerConfig = {
+        BulkExportConfig? bulkConfig = connectorConfig.bulkExportConfig;
+        if bulkConfig is BulkExportConfig {
+            self.bulkExportConfig = {
                 fileServerType: bulkConfig.fileServerType,
                 fileServerDirectory: bulkConfig.fileServerDirectory,
                 fileServerUrl: bulkConfig.fileServerUrl,
                 fileServerUsername: bulkConfig.fileServerUsername,
                 fileServerPassword: bulkConfig.fileServerPassword,
+                fileServerPort: bulkConfig.fileServerPort,
                 localDirectory: bulkConfig.localDirectory,
                 tempFileExpiryInSec: bulkConfig.tempFileExpiryInSec,
                 pollingIntervalInSec: bulkConfig.pollingIntervalInSec
             };
             self.fileServerUrl = bulkConfig.fileServerUrl;
-            self.bulkFileHttpClient = bulkConfig.fileServerUrl is string ? (check new (<string>bulkConfig.fileServerUrl, constructHttpConfigs(bulkConfig))) : self.httpClient;
+            self.bulkFileHttpClient = bulkConfig.fileServerUrl != "" ? (check new (bulkConfig.fileServerUrl, constructHttpConfigs(bulkConfig))) : self.httpClient;
         } else {
             self.bulkFileHttpClient = self.httpClient;
             self.fileServerUrl = ();
-            self.bulkFileServerConfig = ();
+            self.bulkExportConfig = ();
         }
         if connectorConfig.urlRewrite && connectorConfig.replacementURL == () {
             log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${REPLACEMENT_URL_NOT_PROVIDED}`);
@@ -759,7 +756,7 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError {
         do {
             lock {
-	            if self.bulkFileServerConfig !is BulkFileServerConfig {
+	            if self.bulkExportConfig !is BulkExportConfig {
 	                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
 	            }
             }
@@ -806,7 +803,7 @@ public isolated client class FHIRConnector {
 
 	            // Start the background job in a new strand
                 lock {
-	                submitBackgroundJob(taskId, location, <BulkFileServerConfig>self.bulkFileServerConfig);
+	                submitBackgroundJob(taskId, location, <BulkExportConfig>self.bulkExportConfig);
                 }
 
                 if isSuccess {
@@ -866,23 +863,30 @@ public isolated client class FHIRConnector {
             @display {label: "Bulk export ID"} string? exportId = ())
                                         returns FHIRResponse|FHIRError {
         do {
-            if exportId is string {    
+            if exportId is string {
+                lock {
+                    if self.bulkExportConfig !is BulkExportConfig {
+                        return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
+                    }
+                }
+
                 // get the export task from memory using the exportId
                 ExportTask|error exportTask = getExportTaskFromMemory(exportId);
                 if exportTask is error {
-                    json response;
-                    string exportDir = DEFAULT_EXPORT_DIRECTORY;
+                    map<json>|error response;
                     lock {
-                        if self.bulkFileServerConfig is BulkFileServerConfig {
-                            BulkFileServerConfig config = <BulkFileServerConfig>self.bulkFileServerConfig;
-                            exportDir = config.localDirectory;
-                        }
+                        response = getExportedFileUrls(exportId, <BulkExportConfig>self.bulkExportConfig).clone();
                     }
-                    response = check getExportedFileUrls(exportId, exportDir);
+                    if response is error {
+                        return error(string `${FHIR_CONNECTOR_ERROR}: ${response.message()}`, errorDetails = response);
+                    }
                     return {
                         httpStatusCode: 200,
                         'resource: response,
-                        serverResponseHeaders: {}
+                        serverResponseHeaders: {
+                            [CONTENT_TYPE] : APPLICATION_JSON,
+                            ["Expires"]: check response.expiryTime
+                        }
                     };
                 } else {
                     return {
@@ -913,6 +917,33 @@ public isolated client class FHIRConnector {
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
             return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
                 errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
+        } on fail error e {
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+        }
+    }
+
+    # Request to get the exported bulk file
+    #
+    # + exportId - The unique identifier for the export task
+    # + resourceType - The type of the resource being exported
+    # + return - If successful, FhirBulkFileResponse record else FhirError record
+    @display {label: "Get exported file as a byte[] stream"}
+    remote isolated function bulkFile(@display {label: "Export ID"} string exportId,
+            @display {label: "Resource Type"} ResourceType|string resourceType)
+                                        returns FHIRBulkFileResponse|FHIRError {
+        do {
+            string export_directory = DEFAULT_EXPORT_DIRECTORY;
+            lock {
+                if self.bulkExportConfig !is BulkExportConfig {
+                    return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
+                }
+                export_directory = (<BulkExportConfig>self.bulkExportConfig).localDirectory;
+            }
+            return check getExportedFile(exportId, resourceType, export_directory); 
         } on fail error e {
             log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
             if e is FHIRError {
