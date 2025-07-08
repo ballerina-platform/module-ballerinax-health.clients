@@ -1,4 +1,4 @@
-// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -14,10 +14,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/lang.runtime;
 import ballerina/file;
-import ballerina/log;
 import ballerina/io;
+import ballerina/lang.runtime;
+import ballerina/log;
 
 isolated boolean isEndOfExport = false;
 
@@ -38,11 +38,19 @@ isolated function waitForPatientExport() {
     }
 }
 
+isolated function waitForExpiringExport(decimal seconds) {
+    worker waitForExpire {
+        runtime:sleep(seconds);
+    }
+
+    wait waitForExpire;
+}
+
 isolated function createExportFile(string exportId, string export_directory) returns error? {
     string fileName = export_directory + PATH_SEPARATOR + exportId + PATH_SEPARATOR + PATIENT + "-exported.ndjson";
     check file:createDir(export_directory + PATH_SEPARATOR + exportId, file:RECURSIVE);
     check file:create(fileName);
-    
+
     log:printDebug("Export file created successfully.", fileName = fileName);
 
     check io:fileWriteBytes(fileName, testBulkExportFileData.toBytes());

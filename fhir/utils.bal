@@ -1,4 +1,4 @@
-// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -16,8 +16,8 @@
 
 import ballerina/http;
 import ballerina/log;
-import ballerina/url;
 import ballerina/regex;
+import ballerina/url;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
     string paramString = "";
@@ -236,14 +236,14 @@ isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams
                 paramString += key + EQUALS_SIGN + check url:encode(val, "UTF-8") + AMPERSAND;
             }
         } on fail var e {
-        	log:printError(string `Error encoding parameter value`, e);
+            log:printError(string `Error encoding parameter value`, e);
         }
     } else if (qparams is map<string[]>) {
         foreach string key in qparams.keys() {
             foreach string param in qparams.get(key) {
                 paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
-            } on fail var e{
-            	log:printError(string `Error encoding parameter value: ${param}`, e);
+            } on fail var e {
+                log:printError(string `Error encoding parameter value: ${param}`, e);
             }
         }
     }
@@ -643,9 +643,9 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkExportConfig conf
         validation: config.validation,
         socketConfig: config.socketConfig,
         secureSocket: config.secureSocket,
-        auth: config is FHIRConnectorConfig 
-                    ? (config.authConfig is http:ClientAuthConfig ? <http:ClientAuthConfig?>config.authConfig : ()) 
-                    : config.auth
+        auth: config is FHIRConnectorConfig
+            ? (config.authConfig is http:ClientAuthConfig ? <http:ClientAuthConfig?>config.authConfig : ())
+            : config.auth
     };
     return httpConfig;
 }

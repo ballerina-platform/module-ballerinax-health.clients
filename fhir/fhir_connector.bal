@@ -1,4 +1,4 @@
-// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -15,15 +15,15 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/log;
 import ballerina/lang.runtime;
+import ballerina/log;
 import ballerina/uuid;
 import ballerinax/health.base.auth;
 
 # This connector allows you to connect and interact with any FHIR server
 @display {label: "FHIR Client Connector"}
 public isolated client class FHIRConnector {
-    
+
     # The base URL of the FHIR server
     private final string baseUrl;
 
@@ -56,13 +56,13 @@ public isolated client class FHIRConnector {
     # + connectorConfig - FHIR connector configurations
     # + enableCapabilityStatementValidation - Whether to validate the capability statement of the server
     public isolated function init(FHIRConnectorConfig connectorConfig, boolean enableCapabilityStatementValidation = true) returns error? {
-        self.baseUrl = connectorConfig.baseURL.endsWith(SLASH) 
-            ? connectorConfig.baseURL.substring(0, connectorConfig.baseURL.length() - 1) 
+        self.baseUrl = connectorConfig.baseURL.endsWith(SLASH)
+            ? connectorConfig.baseURL.substring(0, connectorConfig.baseURL.length() - 1)
             : connectorConfig.baseURL;
         self.urlRewrite = connectorConfig.urlRewrite;
         self.replacementURL = connectorConfig.replacementURL;
         self.mimeType = connectorConfig.mimeType;
-        
+
         // initialize fhir server http client
         (http:ClientAuthConfig|auth:PKJWTAuthConfig)? authConfig = connectorConfig.authConfig;
         if authConfig is () || authConfig is http:ClientAuthConfig {
@@ -108,10 +108,10 @@ public isolated client class FHIRConnector {
                 log:printDebug(string `Successfully retrieved the capability statement of the server`);
                 string fhirVersion;
                 json resourceVal = <json>capabilityResponse.'resource;
-                
+
                 do {
                     fhirVersion = check resourceVal.fhirVersion;
-                } on fail var err{
+                } on fail var err {
                     log:printDebug(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement, error: ${err.message()}`);
                     return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: 'fhirVersion' property not found in capability statement`);
                 }
@@ -124,7 +124,7 @@ public isolated client class FHIRConnector {
                 }
             }
         } else {
-            log:printInfo(string `Capability statement validation is disabled, skipping capability statement retrieval`);
+            log:printDebug(string `Capability statement validation is disabled, skipping capability statement retrieval`);
         }
     }
 
@@ -141,7 +141,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Summary"} SummaryType? summary = ())
             returns FHIRResponse|FHIRError {
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         string requestURL = string `${SLASH}${'type}${SLASH}${id}${setFormatNSummaryParameters(returnMimeType, summary)}`;
         do {
             log:printDebug(string `Request URL: ${requestURL}`);
@@ -152,7 +152,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -175,7 +175,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = (),
             @display {label: "Summary"} SummaryType? summary = ())
                                                 returns FHIRResponse|FHIRError {
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         string requestURL = string `${SLASH}${'type}${SLASH}${id}${SLASH}${_HISTORY}${SLASH}${'version}${setFormatNSummaryParameters(returnMimeType, summary)}`;
         do {
             log:printDebug(string `Request URL: ${requestURL}`);
@@ -186,7 +186,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -198,10 +198,10 @@ public isolated client class FHIRConnector {
     #
     # + data - Resource data  
     # + onCondition - Condition for a conditional update operation.  
-    #   - To perform a conditional update, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
-    #     - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>`, which will be used to construct the conditional URL.
-    #   - If not specified, a normal update is performed.
+    # - To perform a conditional update, you can:
+    # - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    # - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>`, which will be used to construct the conditional URL.
+    # - If not specified, a normal update is performed.
     # + returnMimeType - The MIME type of the response 
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
@@ -221,7 +221,7 @@ public isolated client class FHIRConnector {
                 log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${MISSING_ID}`);
                 return error(string `${FHIR_CONNECTOR_ERROR}: ${MISSING_ID}`, errorDetails = error(string `Either ' must be provided for update operation.`));
             }
-            
+
             string requestURL;
             string searchParams = "";
             if onCondition is string {
@@ -236,7 +236,7 @@ public isolated client class FHIRConnector {
             }
 
             requestURL = string `${SLASH}${typeIdInfo.'type}${SLASH}${<string>id}${QUESTION_MARK}${searchParams}${AMPERSAND}${setFormatParameters(returnMimeType)}`;
-            
+
             log:printDebug(string `Request URL: ${requestURL}`);
             http:Response response = check self.httpClient->put(sanitizeRequestUrl(requestURL), check enrichRequest(request, self.pkjwtHanlder));
             FHIRResponse result = check getAlteredResourceResponse(response, returnPreference);
@@ -245,7 +245,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -259,10 +259,10 @@ public isolated client class FHIRConnector {
     # + id - The logical id of the resource  
     # + data - Resource data  
     # + onCondition - Condition for a conditional patch operation.  
-    #   - To perform a conditional patch, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
-    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
-    #   - If not specified, a normal patch is performed.
+    # - To perform a conditional patch, you can:
+    # - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    # - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    # - If not specified, a normal patch is performed.
     # + returnMimeType - The MIME type of the response  
     # + patchContentType - Content type of the patch payload
     # + returnPreference - To specify the content of the return response
@@ -302,7 +302,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -315,10 +315,10 @@ public isolated client class FHIRConnector {
     # + 'type - The name of the resource type    
     # + id - The logical id of the resource 
     # + onCondition - Condition for a conditional delete operation.  
-    #   - To perform a conditional delete, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
-    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
-    #   - If not specified, a normal delete is performed.
+    # - To perform a conditional delete, you can:
+    # - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    # - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    # - If not specified, a normal delete is performed.
     # + return - If successful, FhirResponse record else FhirError record
     @display {label: "Delete  resource"}
     remote isolated function delete(@display {label: "Resource Type"} ResourceType|string 'type,
@@ -338,8 +338,8 @@ public isolated client class FHIRConnector {
             searchParams = getConditionalParams(onCondition);
         }
         requestURL = string `${SLASH}${'type}${SLASH}${id}${QUESTION_MARK}${searchParams}`;
-        do {            
-            log:printDebug(string `Request URL: ${requestURL}`);    
+        do {
+            log:printDebug(string `Request URL: ${requestURL}`);
             http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), check enrichHeaders({}, self.pkjwtHanlder));
             FHIRResponse result = check getDeleteResourceResponse(response);
             if self.urlRewrite {
@@ -347,7 +347,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -369,7 +369,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = string `${SLASH}${'type}${SLASH}${id}${SLASH}${_HISTORY}${setHistoryParams(parameters, returnMimeType)}`;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             log:printDebug(string `Request URL: ${requestUrl}`);
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
@@ -379,7 +379,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -387,14 +387,14 @@ public isolated client class FHIRConnector {
         }
     }
 
-# Creates a new resource
+    # Creates a new resource
     #
     # + data - Resource data  
     # + onCondition - Condition for a conditional create operation.  
-    #   - To perform a conditional create, you can:
-    #     - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
-    #     - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
-    #   - If not specified, a normal create is performed.
+    # - To perform a conditional create, you can:
+    # - Provide the conditional URL directly as a string (e.g., `"identifier=12345&status=active"`).
+    # - Or, provide conditional parameters as a `SearchParameters`, or `map<string[]>`, which will be used to construct the conditional URL.
+    # - If not specified, a normal create is performed.
     # + returnMimeType - The MIME type of the response 
     # + returnPreference - To specify the content of the return response
     # + return - If successful, FhirResponse record else FhirError record
@@ -414,8 +414,8 @@ public isolated client class FHIRConnector {
                     conditionalUrl = string `${self.baseUrl}${SLASH}${typeIdInfo.'type}${QUESTION_MARK}${onCondition}`;
                 } else {
                     log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`);
-                    return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`, 
-                                 errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
+                    return error(string `${FHIR_CONNECTOR_ERROR}: ${INVALID_CONDITIONAL_URL}`,
+                                errorDetails = error(string `Conditional URL should be in the format "searchParam=value".`));
                 }
             }
             http:Request request = setCreateUpdatePatchResourceRequest(self.mimeType, returnPreference, data, conditionalUrl);
@@ -428,7 +428,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -450,10 +450,10 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                     returns FHIRResponse|FHIRError {
         string requestUrl;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             http:Response response;
-            
+
             if mode == GET {
                 requestUrl = string `${SLASH}${'type}${setSearchParams(searchParameters, returnMimeType)}`;
 
@@ -468,14 +468,14 @@ public isolated client class FHIRConnector {
                 log:printDebug(string `Request URL: ${requestUrl}`);
                 response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
             }
-            
+
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -495,7 +495,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                             returns FHIRResponse|FHIRError {
         string requestUrl = string `${SLASH}${'type}${SLASH}${_HISTORY}${setHistoryParams(parameters, returnMimeType)}`;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             log:printDebug(string `Request URL: ${requestUrl}`);
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
@@ -505,7 +505,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -525,7 +525,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} map<anydata>? uriParameters = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = string `${SLASH}${METADATA}${QUESTION_MARK}${MODE}${EQUALS_SIGN}${mode}${setCapabilityParams(uriParameters, returnMimeType)}`;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             log:printDebug(string `Request URL: ${requestUrl}`);
             http:Response response = check self.httpClient->get(requestUrl, headerMap);
@@ -535,7 +535,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -553,7 +553,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                             returns FHIRResponse|FHIRError {
         string requestUrl = string `${SLASH}${_HISTORY}${setHistoryParams(parameters, returnMimeType)}`;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             log:printDebug(string `Request URL: ${requestUrl}`);
             http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
@@ -563,7 +563,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -584,7 +584,7 @@ public isolated client class FHIRConnector {
             @display {label: "Return MIME Type"} MimeType? returnMimeType = ())
                                         returns FHIRResponse|FHIRError {
         string requestUrl;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             http:Response response;
             if mode == GET {
@@ -606,7 +606,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -640,7 +640,7 @@ public isolated client class FHIRConnector {
                 return error(FHIR_CONNECTOR_ERROR, errorDetails = error(BUNDLE_TYPE_ERROR + BATCH));
             }
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -675,7 +675,7 @@ public isolated client class FHIRConnector {
             }
 
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -696,7 +696,7 @@ public isolated client class FHIRConnector {
             if nextUrl is () {
                 return ();
             }
-            map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+            map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
             log:printDebug(string `Request URL: ${nextUrl}`);
             http:Response response = check self.httpClient->get(nextUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
@@ -705,7 +705,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -726,7 +726,7 @@ public isolated client class FHIRConnector {
             if prevUrl is () {
                 return ();
             }
-            map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+            map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
             log:printDebug(string `Request URL: ${prevUrl}`);
             http:Response response = check self.httpClient->get(prevUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
             FHIRResponse result = check getBundleResponse(response);
@@ -735,7 +735,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -756,9 +756,9 @@ public isolated client class FHIRConnector {
                                         returns FHIRResponse|FHIRError {
         do {
             lock {
-	            if self.bulkExportConfig !is BulkExportConfig {
-	                return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
-	            }
+                if self.bulkExportConfig !is BulkExportConfig {
+                    return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_FILE_SERVER_CONFIG_NOT_PROVIDED}`);
+                }
             }
             string requestUrl = SLASH;
             if bulkExportLevel == EXPORT_SYSTEM {
@@ -782,7 +782,7 @@ public isolated client class FHIRConnector {
             boolean isSuccess = false;
             http:Response|http:ClientError status;
 
-            log:printInfo("Bulk exporting started. Sending Kick-off request.");
+            log:printDebug("Bulk exporting started. Sending Kick-off request.");
 
             lock {
                 ExportTask exportTask = {id: taskId, lastStatus: "In-progress", pollingEvents: []};
@@ -790,28 +790,28 @@ public isolated client class FHIRConnector {
             }
 
             map<string> headerMap = {
-                [ACCEPT_HEADER] : FHIR_JSON,
-                [PREFER_HEADER] : "respond-async"
+                [ACCEPT_HEADER]: FHIR_JSON,
+                [PREFER_HEADER]: "respond-async"
             };
 
             // kick-off request to the bulk export server
             log:printDebug(string `Request URL: ${requestUrl}`);
             status = self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
 
-            if status is http:Response {    
+            if status is http:Response {
                 string location = check status.getHeader(CONTENT_LOCATION);
 
-	            // Start the background job in a new strand
+                // Start the background job in a new strand
                 lock {
-	                submitBackgroundJob(taskId, location, <BulkExportConfig>self.bulkExportConfig);
+                    submitBackgroundJob(taskId, location, <BulkExportConfig>self.bulkExportConfig);
                 }
 
                 if isSuccess {
-                    log:printInfo("Export task persisted.", exportId = taskId);
+                    log:printDebug("Export task persisted.", exportId = taskId);
                 } else {
                     log:printError("Error occurred while adding the export task to the memory.");
                 }
-                
+
                 string[] headers = status.getHeaderNames();
                 map<string> responseHeaders = {};
                 foreach string header in headers {
@@ -834,11 +834,11 @@ public isolated client class FHIRConnector {
                 log:printDebug(string `Bulk export started successfully with export ID: ${taskId}`);
                 return result;
             } else {
-                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${status.message()}`,  status);
+                log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${status.message()}`, status);
                 return error(string `${FHIR_CONNECTOR_ERROR}: ${status.message()}`, errorDetails = status);
             }
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -853,13 +853,13 @@ public isolated client class FHIRConnector {
     # If the export task does not exist, it returns a `FHIRError` with error details.
     #
     # + contentLocation - The URL to poll for the bulk export status, typically found in the response header of the kickoff request
-    #   - If provided, this URL can be used to check the status of the export
+    # - If provided, this URL can be used to check the status of the export
     # + exportId - The unique identifier for the export task (used as the polling URL or status reference)
-    #   - If provided, this ID is used to retrieve the export task from in-memory storage
-    #   - If not provided, the function will attempt to use the `contentLocation`
+    # - If provided, this ID is used to retrieve the export task from in-memory storage
+    # - If not provided, the function will attempt to use the `contentLocation`
     # + return - On success, returns a `FHIRResponse` record with export task details; on failure, returns a `FHIRError` record
     @display {label: "Check bulk data export progress"}
-    remote isolated function bulkStatus(@display {label: "Bulk status polling url"} string? contentLocation = (), 
+    remote isolated function bulkStatus(@display {label: "Bulk status polling url"} string? contentLocation = (),
             @display {label: "Bulk export ID"} string? exportId = ())
                                         returns FHIRResponse|FHIRError {
         do {
@@ -878,13 +878,14 @@ public isolated client class FHIRConnector {
                         response = getExportedFileUrls(exportId, <BulkExportConfig>self.bulkExportConfig).clone();
                     }
                     if response is error {
-                        return error(string `${FHIR_CONNECTOR_ERROR}: ${response.message()}`, errorDetails = response);
+                        return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${response.message()}`,
+                            httpStatusCode = 410, 'resource = response.message(), serverResponseHeaders = {});
                     }
                     return {
                         httpStatusCode: 200,
                         'resource: response,
                         serverResponseHeaders: {
-                            [CONTENT_TYPE] : APPLICATION_JSON,
+                            [CONTENT_TYPE]: APPLICATION_JSON,
                             ["Expires"]: check response.expiryTime
                         }
                     };
@@ -899,26 +900,26 @@ public isolated client class FHIRConnector {
 
             if contentLocation is string {
                 // If contentLocation is provided, use it to check the status of the export
-                    // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
-                    string requestUrl = self.urlRewrite
-                        ? extractPath(contentLocation, <string>self.replacementURL)
-                        : extractPath(contentLocation, self.baseUrl);
-                    map<string> headerMap = {};
-                    log:printDebug(string `Request URL: ${requestUrl}`);
-                    http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
-                    FHIRResponse result = check getBulkExportResponse(response);
-                    if self.urlRewrite {
-                        return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
-                    }
-                    return result;
+                // If the urlRewrite is enabled, replacementURL is of type string, we can cast it safely here.
+                string requestUrl = self.urlRewrite
+                    ? extractPath(contentLocation, <string>self.replacementURL)
+                    : extractPath(contentLocation, self.baseUrl);
+                map<string> headerMap = {};
+                log:printDebug(string `Request URL: ${requestUrl}`);
+                http:Response response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
+                FHIRResponse result = check getBulkExportResponse(response);
+                if self.urlRewrite {
+                    return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
+                }
+                return result;
             }
 
             // If neither exportId nor contentLocation is provided, return an error
             log:printError(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`);
-            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`, 
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${BULK_EXPORT_ID_NOT_PROVIDED}`,
                 errorDetails = error(string `Either 'exportId' or 'contentLocation' must be provided to check the bulk export status.`));
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -943,9 +944,14 @@ public isolated client class FHIRConnector {
                 }
                 export_directory = (<BulkExportConfig>self.bulkExportConfig).localDirectory;
             }
-            return check getExportedFile(exportId, resourceType, export_directory); 
+            FHIRBulkFileResponse|error exportedFile = getExportedFile(exportId, resourceType, export_directory);
+            if exportedFile is error {
+                return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${exportedFile.message()}`, httpStatusCode = 400, 'resource = exportedFile.message(), serverResponseHeaders = {});
+            } else {
+                return exportedFile;
+            }
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -976,10 +982,10 @@ public isolated client class FHIRConnector {
                                     returns FHIRResponse|FHIRError {
 
         string requestUrl = string `${SLASH}${'type}${setOperationName(operationName, id)}${setCallOperationParams(queryParameters, returnMimeType)}`;
-        map<string> headerMap = {[ACCEPT_HEADER] : self.mimeType};
+        map<string> headerMap = {[ACCEPT_HEADER]: self.mimeType};
         do {
             http:Response response;
-            
+
             if mode == GET {
                 log:printDebug(string `Request URL: ${requestUrl}`);
                 response = check self.httpClient->get(requestUrl, check enrichHeaders(headerMap, self.pkjwtHanlder));
@@ -990,14 +996,14 @@ public isolated client class FHIRConnector {
                 log:printDebug(string `Request URL: ${requestUrl}`);
                 response = check self.httpClient->post(requestUrl, req, check enrichHeaders(headerMap, self.pkjwtHanlder));
             }
-            
+
             FHIRResponse result = check getBundleResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`,  e);
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
@@ -1025,7 +1031,7 @@ public isolated function waitForBulkExportCompletion(string exportId) {
                 // not found meaning the export task is not available in memory
                 break;
             }
-            runtime:sleep(15);  
+            runtime:sleep(15);
         }
     }
 

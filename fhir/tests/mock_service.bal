@@ -67,7 +67,7 @@ http:Service FhirMockService = service object {
             response.statusCode = http:STATUS_ACCEPTED;
             response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatusPatient/1`);
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
-            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+            response.setPayload({"status": "in-progress"}, FHIR_JSON);
             return response;
         } else {
             response.statusCode = http:STATUS_NOT_FOUND;
@@ -108,9 +108,9 @@ http:Service FhirMockService = service object {
         check response.setContentType(FHIR_JSON);
         return response;
     }
-    
+
     @http:ResourceConfig {
-         consumes: ["application/fhir+json", "application/fhir+xml"]
+        consumes: ["application/fhir+json", "application/fhir+xml"]
     }
     resource function put [string 'type](http:Request payload) returns http:Response {
         http:Response response = new ();
@@ -257,7 +257,7 @@ http:Service FhirMockService = service object {
             response.statusCode = http:STATUS_ACCEPTED;
             response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatus/1`);
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
-            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+            response.setPayload({"status": "in-progress"}, FHIR_JSON);
             return response;
         }
 
@@ -361,7 +361,7 @@ http:Service FhirMockService = service object {
             response.statusCode = http:STATUS_ACCEPTED;
             response.setHeader(CONTENT_LOCATION, string `${localhost}${testServerBaseUrl}/exportStatus/1`);
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
-            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+            response.setPayload({"status": "in-progress"}, FHIR_JSON);
             return response;
         }
         response.statusCode = http:STATUS_NOT_FOUND;
@@ -375,7 +375,7 @@ http:Service FhirMockService = service object {
             response.statusCode = http:STATUS_ACCEPTED;
             response.setHeader(X_PROGRESS, "Build in progress - Status set to BUILDING ");
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
-            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+            response.setPayload({"status": "in-progress"}, FHIR_JSON);
         } else {
             response.statusCode = http:STATUS_OK;
             response.setPayload(testExportFileManifestData, FHIR_JSON);
@@ -395,7 +395,7 @@ http:Service FhirMockService = service object {
             response.statusCode = http:STATUS_ACCEPTED;
             response.setHeader(X_PROGRESS, "Build in progress - Status set to BUILDING ");
             response.setHeader(CONTENT_TYPE, FHIR_JSON);
-            response.setPayload({ "status": "in-progress" }, FHIR_JSON);
+            response.setPayload({"status": "in-progress"}, FHIR_JSON);
         } else {
             response.statusCode = http:STATUS_OK;
             response.setPayload(testExportFileManifestData, FHIR_JSON);

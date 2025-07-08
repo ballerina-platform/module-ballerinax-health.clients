@@ -14,25 +14,25 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/test;
-import ballerina/log;
 import ballerina/http;
+import ballerina/io;
+import ballerina/log;
+import ballerina/test;
 
 final string testServerBaseUrl = "/fhir_test_server/r4";
 final string localhost = "http://localhost:8080";
 final string replacementUrl = "http://localhost:8181/fhir";
+final decimal waitForExpire = 20; // seconds
 
 FHIRConnectorConfig config = {
     baseURL: localhost + testServerBaseUrl,
-    mimeType: FHIR_JSON, 
-    bulkFileServerConfig: {
+    mimeType: FHIR_JSON,
+    bulkExportConfig: {
+        fileServerType: "local", // use 'ftp' to test with FTP server
+        fileServerUrl: "localhost",
+        fileServerDirectory: "/exports",
         pollingIntervalInSec: 0.5d,
-        fileServerUsername: "",
-        fileServerPassword: "",
-        fileServerUrl: localhost,
-        fileServerType: "local",
-        fileServerDirectory: "",
-        tempFileExpiryInSec: 60
+        tempFileExpiryInSec: waitForExpire
     }
 };
 FHIRConnector fhirConnector;
@@ -42,13 +42,9 @@ FHIRConnectorConfig urlRewriteConfig = {
     mimeType: FHIR_JSON,
     urlRewrite: true,
     replacementURL: replacementUrl,
-    bulkFileServerConfig: {
-        pollingIntervalInSec: 0.5d,
-        fileServerUsername: "",
-        fileServerPassword: "",
-        fileServerUrl: localhost,
+    bulkExportConfig: {
         fileServerType: "local",
-        fileServerDirectory: "/target/bulk_files1"
+        pollingIntervalInSec: 0.5d
     }
 };
 FHIRConnector urlRewriteConnector;
@@ -185,11 +181,11 @@ function testUpdate() returns FHIRError? {
     }
 
     // Conditional update using a conditional URL (resource exists)
-    FHIRResponse result5 = check fhirConnector->update(testUpdateResourceDataJson, onCondition = { "url": "exists" });
+    FHIRResponse result5 = check fhirConnector->update(testUpdateResourceDataJson, onCondition = {"url": "exists"});
     test:assertEquals(result5.httpStatusCode, 200, "Failed to return the correct status code for conditional update (resource exists)");
 
     // Conditional update using a conditional URL (resource does not exist)
-    FHIRResponse result6 = check fhirConnector->update(testUpdateResourceDataJson, onCondition = { "url": "notfound" });
+    FHIRResponse result6 = check fhirConnector->update(testUpdateResourceDataJson, onCondition = {"url": "notfound"});
     test:assertEquals(result6.httpStatusCode, 200, "Failed to return the correct status code for conditional update (resource not found)");
     test:assertEquals(result6.'resource, locationDetails, "Failed to return location details for conditional update (resource not found).");
 
@@ -207,7 +203,7 @@ function testUpdate() returns FHIRError? {
         }
     } else {
         test:assertFail("Failed to respond with the correct error");
-    }   
+    }
 }
 
 @test:Config {}
@@ -256,7 +252,7 @@ function testDelete() returns FHIRError? {
     }
 
     // Conditional delete using a conditional URL (resource exists)
-    FHIRResponse result3 = check fhirConnector->delete(PATIENT, "pat1", onCondition = { "url": "exists" });
+    FHIRResponse result3 = check fhirConnector->delete(PATIENT, "pat1", onCondition = {"url": "exists"});
     test:assertEquals(result3.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
 
     // Conditional delete using search parameters (resource exists)
@@ -265,7 +261,7 @@ function testDelete() returns FHIRError? {
     test:assertEquals(result5.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
 
     // Conditional delete using a conditional URL (resource does not exist)
-    FHIRResponse|FHIRError result4 = fhirConnector->delete(PATIENT, "pat1", onCondition = { "url": "notfound" });
+    FHIRResponse|FHIRError result4 = fhirConnector->delete(PATIENT, "pat1", onCondition = {"url": "notfound"});
     if result4 is FHIRError {
         if result4 is FHIRServerError {
             test:assertEquals(result4.detail().httpStatusCode, 404, "Failed to return the correct status code for conditional delete (resource not found)");
@@ -278,7 +274,7 @@ function testDelete() returns FHIRError? {
     }
 
     // Conditional delete using a conditional URL (resource exists)
-    FHIRResponse result6 = check fhirConnector->delete(PATIENT, id = "pat1", onCondition = { "url": "exists" });
+    FHIRResponse result6 = check fhirConnector->delete(PATIENT, id = "pat1", onCondition = {"url": "exists"});
     test:assertEquals(result6.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
 }
 
@@ -330,7 +326,7 @@ function testCreate() returns FHIRError? {
     // Conditional create using a SearchParameters record
     SearchParameters condParams = {_id: "pat1"};
     FHIRResponse result5 = check fhirConnector->create(testUpdateResourceDataJson, onCondition = condParams);
-    test:assertEquals(result5.httpStatusCode, 201, "Failed to return the correct status code for conditional create by SearchParameters");   
+    test:assertEquals(result5.httpStatusCode, 201, "Failed to return the correct status code for conditional create by SearchParameters");
 }
 
 @test:Config {}
@@ -555,9 +551,9 @@ function testBulkExportKickOff() returns FHIRError? {
     FHIRResponse result5 = check fhirConnector->bulkExport(
         EXPORT_SYSTEM,
         bulkExportParameters = {
-            _since: "2017-01-01T00:00:00Z",
-            _type: ["Patient"]
-        }
+        _since: "2017-01-01T00:00:00Z",
+        _type: ["Patient"]
+    }
     );
     test:assertEquals(result5.httpStatusCode, 202, "Failed to return the correct status code");
     test:assertTrue(result5.serverResponseHeaders[CONTENT_LOCATION.toLowerAscii()] != (), "Failed to return bulk export content location header");
@@ -615,6 +611,46 @@ function testBulkExportFullProcess() returns error? {
     // Patient level export status check: got the completed export
     FHIRResponse result4 = check fhirConnector->bulkStatus(exportId = exportResult.exportId);
     test:assertEquals(result4.httpStatusCode, 200, "Failed to return the correct status code");
+
+    // check the exported file manifest
+    FHIRBulkFileResponse result3 = check fhirConnector->bulkFile(exportResult.exportId, "Patient");
+    test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
+    stream<byte[], io:Error?> fileStream = result3.dataStream;
+    byte[][] fileBytes = check from var i in fileStream
+        select i;
+    byte[] fileData = [];
+    foreach byte[] byteArr in fileBytes {
+        fileData.push(...byteArr);
+    }
+    string fileContent = check string:fromBytes(fileData);
+    test:assertEquals(fileContent, testBulkExportFileData, "Failed to return the correct file content");
+
+    // invalid export ID
+    FHIRBulkFileResponse|FHIRError result5 = fhirConnector->bulkFile("invalidExportId", "Patient");
+    if result5 is FHIRError {
+        if result5 is FHIRServerError {
+            FHIRServerErrorDetails e = result5.detail();
+            test:assertEquals(e.httpStatusCode, 400, "Failed to return the correct status code for invalid export ID");
+        } else {
+            test:assertFail("Failed to respond with the correct error type:FhirServerError for invalid export ID");
+        }
+    } else {
+        test:assertFail("Failed to respond with the correct error for invalid export ID");
+    }
+
+    waitForExpiringExport(waitForExpire);
+
+    FHIRResponse|FHIRError result6 = fhirConnector->bulkStatus(exportId = exportResult.exportId);
+    if result6 is FHIRError {
+        if result6 is FHIRServerError {
+            FHIRServerErrorDetails e = result6.detail();
+            test:assertEquals(e.httpStatusCode, 410, "Failed to return the correct status code for expired export");
+        } else {
+            test:assertFail("Failed to respond with the correct error type:FhirServerError for expired export");
+        }
+    } else {
+        test:assertFail("Failed to respond with the correct error for expired export");
+    }
 }
 
 @test:Config {}

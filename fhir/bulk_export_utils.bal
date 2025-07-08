@@ -18,12 +18,12 @@ import ballerina/file;
 import ballerina/ftp;
 import ballerina/http;
 import ballerina/io;
-import ballerina/log;
-import ballerina/task;
-import ballerina/regex;
-import ballerina/time;
 import ballerina/lang.runtime;
+import ballerina/log;
 import ballerina/mime;
+import ballerina/regex;
+import ballerina/task;
+import ballerina/time;
 
 final string PATH_SEPARATOR = file:pathSeparator;
 
@@ -82,9 +82,9 @@ function downloadFiles(json exportSummary, string exportId, BulkExportConfig con
             port: config.fileServerPort,
             auth: {
                 credentials: (config.fileServerUsername != "") ? {
-                    username: config.fileServerUsername,
-                    password: config.fileServerPassword
-                } : ()
+                        username: config.fileServerUsername,
+                        password: config.fileServerPassword
+                    } : ()
             }
         });
     }
@@ -204,7 +204,7 @@ class PollingTask {
         self.lastStatus = "In-progress";
         self.location = location;
         self.bulkExportConfig = config;
-        
+
         do {
             if check file:test(config.localDirectory, file:EXISTS) {
                 log:printDebug("Local directory exists.", localDirectory = config.localDirectory);
@@ -266,7 +266,7 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
         log:printDebug("Exported files not found for exportId: " + exportId);
         return error(string `Exported files not found for exportId: ${exportId}, May be the export is not completed yet or the files have been removed.`);
     }
-    
+
     json[] output = [];
     if config.fileServerType == "ftp" {
         ftp:Client fileClient = check new ({
@@ -274,9 +274,9 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
             port: config.fileServerPort,
             auth: {
                 credentials: (config.fileServerUsername != "") ? {
-                    username: config.fileServerUsername,
-                    password: config.fileServerPassword
-                } : ()
+                        username: config.fileServerUsername,
+                        password: config.fileServerPassword
+                    } : ()
             }
         });
 
@@ -284,7 +284,7 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
 
         foreach ftp:FileInfo fileData in fileDataList {
             string resourceType = regex:split(fileData.name, "-exported.ndjson")[0];
-            
+
             output.push({
                 "url": fileData.friendlyURI,
                 "type": resourceType

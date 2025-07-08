@@ -1,4 +1,4 @@
-// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -54,44 +54,44 @@ public type FHIRConnectorConfig record {|
     string replacementURL?;
     @display {label: "Bulk export file server configs"}
     BulkExportConfig bulkExportConfig?;
-    @display {label:"The HTTP version understood by the client"}
+    @display {label: "The HTTP version understood by the client"}
     http:HttpVersion httpVersion = http:HTTP_2_0;
-    @display {label:"Configurations related to HTTP/1.x protocol"}
+    @display {label: "Configurations related to HTTP/1.x protocol"}
     http:ClientHttp1Settings http1Settings = {};
-    @display {label:"Configurations related to HTTP/2 protocol"}
+    @display {label: "Configurations related to HTTP/2 protocol"}
     http:ClientHttp2Settings http2Settings = {};
-    @display {label:"The maximum time to wait (in seconds) for a response before closing the connection"}
+    @display {label: "The maximum time to wait (in seconds) for a response before closing the connection"}
     decimal timeout = 30;
-    @display {label:"The choice of setting `forwarded`/`x-forwarded` header"}
+    @display {label: "The choice of setting `forwarded`/`x-forwarded` header"}
     string forwarded = "disable";
-    @display {label:"Configurations associated with request pooling"}
+    @display {label: "Configurations associated with request pooling"}
     http:PoolConfiguration? poolConfig = ();
-    @display {label:"HTTP caching related configurations"}
+    @display {label: "HTTP caching related configurations"}
     http:CacheConfig cache = {};
-    @display {label:"Specifies the way of handling compression (`accept-encoding`) header"}
+    @display {label: "Specifies the way of handling compression (`accept-encoding`) header"}
     http:Compression compression = http:COMPRESSION_AUTO;
-    @display {label:"Configurations associated with the behaviour of the Circuit Breaker"}
+    @display {label: "Configurations associated with the behaviour of the Circuit Breaker"}
     http:CircuitBreakerConfig? circuitBreaker = ();
-    @display {label:"Configurations associated with retrying"}
+    @display {label: "Configurations associated with retrying"}
     http:RetryConfig? retryConfig = ();
-    @display {label:"Configurations associated with inbound response size limits"}
+    @display {label: "Configurations associated with inbound response size limits"}
     http:ResponseLimitConfigs responseLimits = {};
-    @display {label:"Proxy server related options"}
+    @display {label: "Proxy server related options"}
     http:ProxyConfig? proxy = ();
-    @display {label:"Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default"}
+    @display {label: "Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default"}
     boolean validation = true;
-    @display {label:"Provides settings related to client socket configuration"}
+    @display {label: "Provides settings related to client socket configuration"}
     http:ClientSocketConfig socketConfig = {};
-    @display {label:"Provides settings related to SSL/TLS"}
+    @display {label: "Provides settings related to SSL/TLS"}
     http:ClientSecureSocket? secureSocket = ();
 |};
 
 # Configs of the file server where bulk export files will be stored
 #
 # + fileServerType - fhir, ftp, or local
-#   - fhir: Sync the exported files with a FHIR server
-#   - ftp: Send the exported files to a FTP server
-#   - local: Save the exported files in the local file system
+# - fhir: Sync the exported files with a FHIR server
+# - ftp: Send the exported files to a FTP server
+# - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
 # + localDirectory - Local directory to save the exported files, for local file server
 # + fileServerUsername - Username to access the server, for ftp
