@@ -1,4 +1,4 @@
-// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -246,6 +246,7 @@ const EXPORT = "$export";
 
 # x-www-form-urlencoded content type
 const APPLICATION_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded";
+const APPLICATION_JSON = "application/json";
 
 # Server Status codes
 const STATUS_CODE_OK = 200;
@@ -260,6 +261,8 @@ const LOCATION = "Location";
 const CONTENT_TYPE = "Content-Type";
 const CONTENT_LOCATION = "Content-Location";
 const IF_NONE_EXISTS = "If-None-Exist";
+const X_PROGRESS = "X-Progress";
+const EXPORT_ID = "Export-ID";
 
 # Error messages 
 const RESOURCE_ID_NOT_FOUND_IN_DATA = "The provided resource data doesn't contain a id value";
@@ -276,6 +279,10 @@ const REPLACEMENT_URL_NOT_PROVIDED = "URL rewrite is set to true, but replacemen
 const GROUP_ID_NOT_PROVIDED = "The parameter 'groupId' is not provided for Group Bulk Export operation";
 const MISSING_ID = "'id' is a mandatory parameter for the interaction";
 const INVALID_CONDITIONAL_URL = "The provided conditional URL is invalid";
+const BULK_EXPORT_ID_NOT_PROVIDED = "Either exportId or contentLocation must be provided for the Bulk Export Status operation";
+const BULK_FILE_URL_NOT_PROVIDED = "Either fileUrl or exportId must be provided for the Bulk Export File operation";
+const BULK_FILE_SERVER_CONFIG_NOT_PROVIDED = "The target server configuration is not provided for the Bulk Export File operation";
+const BULK_EXPORT_NOT_COMPLETED_OR_REMOVED = "May be the export is not completed yet or the file has been removed.";
 
 # XML attributes
 const XML_ID = "id";
@@ -290,3 +297,7 @@ const PREVIOUS = "previous";
 const PREV = "prev";
 const SELF = "self";
 
+# default values
+const DEFAULT_POLLING_INTERVAL = 2.0d; // 2 seconds
+const DEFAULT_TEMP_FILE_EXPIRY = 86400.0d; // 24 hours in seconds
+const DEFAULT_EXPORT_DIRECTORY = "bulk_export";

@@ -1,4 +1,4 @@
-// Copyright (c) 2023, WSO2 LLC. (http://www.wso2.com).
+// Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 
 // WSO2 LLC. licenses this file to you under the Apache License,
 // Version 2.0 (the "License"); you may not use this file except
@@ -626,7 +626,7 @@ isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string
     }
 }
 
-isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig config) returns http:ClientConfiguration {
+isolated function constructHttpConfigs(FHIRConnectorConfig|BulkExportConfig config) returns http:ClientConfiguration {
     http:ClientConfiguration httpConfig = {
         httpVersion: config.httpVersion,
         http1Settings: config.http1Settings.cloneReadOnly(),
@@ -664,7 +664,7 @@ isolated function matchesQueryPattern(string input) returns boolean {
     return regex:matches(input, pattern);
 }
 
-function isSupportedFhirVersion(string fhirVersion) returns boolean {
+isolated function isSupportedFhirVersion(string fhirVersion) returns boolean {
     // Accepts FHIR versions R4 (4.x.x) and onwards (e.g., 4.0.1, 5.0.0)
     string versionPattern = "^(4|5)\\.[0-9]+\\.[0-9]+$";
     return regex:matches(fhirVersion, versionPattern);
