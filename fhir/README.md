@@ -235,7 +235,7 @@ To enable bulk export, you must configure the `bulkExportConfig` in your `FHIRCo
 
 ```ballerina
 fhir_client:BulkExportConfig bulkExportConfig = {
-    fileServerType: "local",             // type of the file server 'fhir', 'ftp' or 'local'
+    fileServerType: fhir_client:LOCAL,   // type of the file server 'fhir', 'ftp' or 'local'
     fileServerUrl: "<url>",              // host url of the file server 
     fileServerDirectory: "<dir-path>",   // directory to save the exported files in the file server, if type is ftp
     fileServerPort: 21,                  // port of the file server (ftp), default = 21 
@@ -264,7 +264,7 @@ import ballerina/http;
 import ballerinax/health.clients.fhir as fhir_client;
 
 fhir_client:BulkExportConfig bulkExportConfig = {
-    fileServerType: "local",
+    fileServerType: fhir_client:LOCAL,
     tempFileExpiryTime: 7200, // two hours
     tempDirectory: "temp_bulk_export"
 };
@@ -278,25 +278,26 @@ fhir_client:FHIRConnectorConfig fhirServerConfig = {
 fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig, enableCapabilityStatementValidation = false);
 
 service /Patient on new http:Listener(8080) {
-    resource function get export(http:Caller caller, http:Request req) returns error? {
+    resource function get export(http:Request req) returns http:Response|error? {
         fhir_client:FHIRResponse response = check fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
         json responseBody = response.'resource.toJson();
-        return caller->respond({
+        http:Response httpResponse = new;
+        httpResponse.setJsonPayload({
             exportId: check responseBody.exportId,
             pollingUrl: check responseBody.pollingUrl
         });
+        httpResponse.setHeader("X-Progress", response.serverResponseHeaders["X-Progress"] ?: "In-progress");
+        httpResponse.statusCode = response.httpStatusCode;
+        return httpResponse;
     }
 
-    resource function get [string exportId]/status(http:Caller caller) returns error? {
+    resource function get [string exportId]/status() returns http:Response|error? {
         fhir_client:FHIRResponse response = check fhirConnector->bulkStatus(exportId = exportId);
-        if response.httpStatusCode == 200 {
-            json responseBody = response.'resource.toJson();
-            return caller->respond(responseBody);
-        } else if response.httpStatusCode == 202 {
-            return caller->respond("Export is still in progress.");
-        } else {
-            return caller->respond("Export not found or an error occurred.");
-        }
+        http:Response httpResponse = new;
+        httpResponse.setJsonPayload(response.'resource.toJson());
+        httpResponse.setHeader("X-Progress", response.serverResponseHeaders["X-Progress"] ?: "In-progress");
+        httpResponse.statusCode = response.httpStatusCode;
+        return httpResponse;
     }
 }
 ```

@@ -92,18 +92,18 @@ public type FHIRConnectorConfig record {|
 # - ftp: Send the exported files to a FTP server
 # - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
-# + tempDirectory - Local directory to save the exported files, for local file server
 # + fileServerUsername - Username to access the server, for ftp
 # + fileServerPassword - Password to access the server, for ftp
 # + fileServerDirectory - Directory to save the exported files in the file server, for ftp
 # + fileServerPort - Port to access the file server, default is 21
-# + pollingInterval - Bulk status polling interval in seconds
-# + tempFileExpiryTime - Expiration period for temporary export files in seconds
+# + pollingInterval - Bulk status polling interval in seconds, default is 2 seconds
+# + tempDirectory - Local directory to save the exported files, for local file server
+# + tempFileExpiryTime - Expiration period for temporary export files in seconds, for local file server
 public type BulkExportConfig record {|
     *http:ClientConfiguration;
 
     @display {label: "File server type"}
-    "fhir"|"ftp"|"local" fileServerType = "local";
+    ExportFileServerType fileServerType = LOCAL;
     @display {label: "Bulk export file server base url"}
     string fileServerUrl = "";
     @display {label: "File server port"}
@@ -243,6 +243,26 @@ public type BulkExportParameters record {
 # - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>` to construct the conditional URL.
 public type OnCondition SearchParameters|map<string[]>|string;
 
+# Represents the exported file URLs and related metadata for a bulk export operation.
+#
+# + exportId - The unique identifier for the export operation
+# + expiryTime - The expiration time for the exported files (as a string, e.g., UTC timestamp or "N/A")
+# + output - An array of OutputFile records, each containing details about an exported file
+public type ExportedFileUrlInfo record {|
+    string exportId;
+    string expiryTime?;
+    OutputFile[] output;
+|};
+
+# Represents metadata for an exported FHIR resource file.
+#
+# + type - The FHIR resource type (e.g., "Patient", "Observation") of the exported file
+# + url - The URL or path where the exported file can be accessed
+public type OutputFile record {
+    string 'type;
+    string url;
+};
+
 type ResourceTypeNId record {|
     string 'type;
     string? id;
@@ -263,13 +283,6 @@ type Pagination record {|
     string previous?;
     string self?;
 |};
-
-// record to map exported resource metadata.
-type OutputFile record {
-    string 'type;
-    string url;
-    int count;
-};
 
 // record to hold summary of exports.
 type ExportSummary record {

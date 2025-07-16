@@ -873,27 +873,32 @@ public isolated client class FHIRConnector {
                 // get the export task from memory using the exportId
                 ExportTask|error exportTask = getExportTaskFromMemory(exportId);
                 if exportTask is error {
-                    map<json>|error response;
+                    ExportedFileUrlInfo|error fileInfo;
                     lock {
-                        response = getExportedFileUrls(exportId, <BulkExportConfig>self.bulkExportConfig).clone();
+                        fileInfo = getExportedFileUrls(exportId, <BulkExportConfig>self.bulkExportConfig).clone();
                     }
-                    if response is error {
-                        return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${response.message()}`,
-                            httpStatusCode = 410, 'resource = response.message(), serverResponseHeaders = {});
+                    if fileInfo is error {
+                        return error FHIRServerError(string `${FHIR_SERVER_ERROR}: ${fileInfo.message()}`,
+                            httpStatusCode = 410, 'resource = fileInfo.message(), serverResponseHeaders = {});
                     }
-                    return {
-                        httpStatusCode: 200,
-                        'resource: response,
+                    FHIRResponse result = {
+                        httpStatusCode: http:STATUS_OK,
+                        'resource: fileInfo.toJson(),
                         serverResponseHeaders: {
-                            [CONTENT_TYPE]: APPLICATION_JSON,
-                            ["Expires"]: check response.expiryTime
+                            [CONTENT_TYPE]: APPLICATION_JSON
                         }
                     };
+                    if fileInfo.expiryTime is string {
+                        result.serverResponseHeaders["Expires"] = <string>fileInfo.expiryTime;
+                    }
+                    return result;
                 } else {
                     return {
-                        httpStatusCode: exportTask.lastStatus == "In-progress" ? http:STATUS_ACCEPTED : http:STATUS_OK,
-                        'resource: exportTask.toJson(),
-                        serverResponseHeaders: {}
+                        httpStatusCode: http:STATUS_ACCEPTED,
+                        'resource: (),
+                        serverResponseHeaders: {
+                            [X_PROGRESS]: exportTask.lastStatus
+                        }
                     };
                 }
             }

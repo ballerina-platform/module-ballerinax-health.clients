@@ -27,7 +27,7 @@ FHIRConnectorConfig config = {
     baseURL: localhost + testServerBaseUrl,
     mimeType: FHIR_JSON,
     bulkExportConfig: {
-        fileServerType: "local", // use 'ftp' to test with FTP server
+        fileServerType: LOCAL, // use 'ftp' to test with FTP server
         fileServerUrl: "localhost",
         fileServerDirectory: "/exports",
         pollingInterval: 0.5d,
@@ -42,7 +42,7 @@ FHIRConnectorConfig urlRewriteConfig = {
     urlRewrite: true,
     replacementURL: replacementUrl,
     bulkExportConfig: {
-        fileServerType: "local",
+        fileServerType: LOCAL,
         pollingInterval: 0.5d
     }
 };

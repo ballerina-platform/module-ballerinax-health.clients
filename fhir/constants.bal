@@ -221,6 +221,12 @@ public enum RequestMode {
     GET = "GET"
 };
 
+public enum ExportFileServerType {
+    FHIR = "fhir",
+    FTP = "ftp",
+    LOCAL = "local"
+}
+
 # Constant symbols
 const AMPERSAND = "&";
 const SLASH = "/";

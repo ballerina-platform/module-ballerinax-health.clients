@@ -66,19 +66,32 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
 
 function uploadFileToFTP(string downloadLink, ftp:Client fileClient, string ftpFilePath) returns error? {
     log:printDebug("Uploading file to FTP server.", url = downloadLink, ftpFilePath = ftpFilePath);
+    
+    // download the file as a stream
     http:Client statusClientV2 = check new (downloadLink);
     stream<byte[], io:Error?> streamer = check getFileAsStream(downloadLink, statusClientV2) ?: new ();
-    stream<byte[] & readonly, io:Error?> readOnlyStreamer = from byte[] b in streamer select b.cloneReadOnly();
+    
+    // clone the stream to make it readonly
+    // This is to ensure that the stream is read-only when uploading to FTP
+    // as FTP client expects a read-only stream.
+    stream<byte[] & readonly, io:Error?> readOnlyStreamer = from byte[] b in streamer
+        select b is byte[] & readonly ? b : b.cloneReadOnly();
+
+    // Upload the file to FTP server
     check fileClient->put(ftpFilePath, readOnlyStreamer);
+
+    // close the streams
     check streamer.close();
     check readOnlyStreamer.close();
 }
 
 function downloadFiles(json exportSummary, string exportId, BulkExportConfig config) returns error? {
-    ExportSummary exportSummary1 = check exportSummary.cloneWithType(ExportSummary);
-    string export_directory = config.tempDirectory;
+    ExportSummary|error exportSummaryClone = exportSummary.cloneWithType(ExportSummary);
+    if exportSummaryClone is error {
+        return error(string `Failed to clone the export summary: ${exportSummaryClone.message()}`);
+    }
 
-    if config.fileServerType == "ftp" {
+    if config.fileServerType == FTP {
         ftp:Client fileClient = check new ({
             host: config.fileServerUrl,
             port: config.fileServerPort,
@@ -90,9 +103,9 @@ function downloadFiles(json exportSummary, string exportId, BulkExportConfig con
             }
         });
         log:printDebug("FTP client created successfully.", host = config.fileServerUrl, port = config.fileServerPort);
-        int noOfFiles = exportSummary1.output.length();
+        int noOfFiles = exportSummaryClone.output.length();
         int completedFiles = 0;
-        foreach OutputFile item in exportSummary1.output {
+        foreach OutputFile item in exportSummaryClone.output {
             string ftpFilePath = string `${config.fileServerDirectory}/${exportId}/${item.'type}-exported.ndjson`;
             error? uploadFileResult = uploadFileToFTP(item.url, fileClient, ftpFilePath);
             if uploadFileResult is error {
@@ -102,27 +115,28 @@ function downloadFiles(json exportSummary, string exportId, BulkExportConfig con
             }
             lock {
                 completedFiles = completedFiles + 1;
-                updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = exportId, 
-                    newStatus = string `Export Completed. Uploaded ${completedFiles} out of ${noOfFiles} files to the FTP server.`);
+                updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = exportId,
+                        newStatus = string `Export Completed. Downloaded ${completedFiles} out of ${noOfFiles} files to the FTP server.`);
             }
         }
-    } else if config.fileServerType == "fhir" {
+    } else if config.fileServerType == FHIR {
         // TODO: Implement FHIR repository/DB syncing functionality
         // 1. Deduplication mechanism for exported FHIR resources
         // 2. Maintaining traceability to original source systems
         // 3. Data validation and transformation processes
         // 4. Conflict resolution strategies for overlapping data
         // Until these syncing pre-requisites are finalized, the operation
+        log:printWarn("FHIR repository/DB syncing functionality is not implemented yet. Please check the implementation details.");
     } else {
         // download the files to the local file system
-        foreach OutputFile item in exportSummary1.output { 
+        foreach OutputFile item in exportSummaryClone.output {
             log:printDebug("Downloading the file.", url = item.url);
-            string fsFilePath = string `${export_directory}${PATH_SEPARATOR}${exportId}${PATH_SEPARATOR}${item.'type}-exported.ndjson`;
+            string fsFilePath = string `${config.tempDirectory}${PATH_SEPARATOR}${exportId}${PATH_SEPARATOR}${item.'type}-exported.ndjson`;
             error? downloadFileResult = saveFileInFS(item.url, fsFilePath);
             if downloadFileResult is error {
                 log:printError("Error occurred while downloading the file.", downloadFileResult);
                 continue;
-            } 
+            }
             log:printDebug("File downloaded successfully.", file = string `${item.'type}-exported.ndjson`);
         }
     }
@@ -156,20 +170,20 @@ class PollingTask {
                             updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = self.exportId, newStatus = "Export Completed. Downloading files.");
                         }
                         json payload = check statusResponse.getJsonPayload();
-                        log:printDebug("Export task completed.", exportId = self.exportId);
+                        log:printDebug("Exporting completed, unscheduling the job and downloading files.", exportId = self.exportId);
                         error? unscheduleJobResult = unscheduleJob(self.jobId);
                         if unscheduleJobResult is error {
                             log:printError("Error occurred while unscheduling the job.", unscheduleJobResult);
                         }
 
                         // download the files
-                        log:printDebug("Target server configuration is provided. Downloading files to the target server.");
+                        log:printDebug("Downloading files for export task.", exportId = self.exportId);
                         error? downloadFilesResult = downloadFiles(payload, self.exportId, self.bulkExportConfig);
                         if downloadFilesResult is error {
-                            log:printError("Error in downloading files. " + downloadFilesResult.message());
+                            log:printError("Error in downloading files: " + downloadFilesResult.message());
                         }
 
-                        if self.bulkExportConfig.fileServerType == "local" {
+                        if self.bulkExportConfig.fileServerType == LOCAL {
                             log:printDebug("Removing the export task from memory and local directory after expiry.");
                             removeExportTaskFromMemory(self.exportId, self.bulkExportConfig.tempFileExpiryTime);
 
@@ -180,7 +194,7 @@ class PollingTask {
                             removeExportTaskFromMemory(self.exportId);
                         }
 
-                        log:printDebug("Export task is completed.", exportId = self.exportId);
+                        log:printDebug("Export task completed and files downloaded successfully.", exportId = self.exportId);
                     } else if status == 202 {
                         string progress = check statusResponse.getHeader(X_PROGRESS);
                         PollingEvent pollingEvent = {id: self.exportId, eventStatus: "Success", exportStatus: progress};
@@ -266,11 +280,13 @@ isolated function removeData(string exportId, string export_directory, decimal e
     removeExpiredExportTask(exportId);
 }
 
-isolated function getExportedFileUrls(string exportId, BulkExportConfig config) returns map<json>|error {
-    json[] output = [];
-    json expiryTimeString = "N/A";
+isolated function getExportedFileUrls(string exportId, BulkExportConfig config) returns ExportedFileUrlInfo|error {
+    ExportedFileUrlInfo exportedFileUrlInfo = {
+        exportId: exportId,
+        output: []
+    };
 
-    if config.fileServerType == "ftp" {
+    if config.fileServerType == FTP {
         ftp:Client fileClient = check new ({
             host: config.fileServerUrl,
             port: config.fileServerPort,
@@ -287,12 +303,12 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
         foreach ftp:FileInfo fileData in fileDataList {
             string resourceType = regex:split(fileData.name, "-exported.ndjson")[0];
 
-            output.push({
-                "url": fileData.friendlyURI,
-                "type": resourceType
+            exportedFileUrlInfo.output.push({
+                url: fileData.friendlyURI,
+                'type: resourceType
             });
         }
-    } else if config.fileServerType == "fhir" {
+    } else if config.fileServerType == FHIR {
         // TODO: Implement FHIR repository/DB syncing functionality
         return error("FHIR repository/DB syncing functionality is not implemented yet. Please check the implementation details.");
     } else {
@@ -312,18 +328,14 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
             string resourceType = regex:split(lastPart, "-exported.ndjson")[0];
 
             string absPath = exportedFile.absPath;
-            output.push({
-                "url": regex:replaceAll(absPath, "\\\\", PATH_SEPARATOR),
-                "type": resourceType
+            exportedFileUrlInfo.output.push({
+                url: regex:replaceAll(absPath, "\\\\", PATH_SEPARATOR),
+                'type: resourceType
             });
         }
 
-        expiryTimeString = time:utcToString(check getExpiryTimeForExportTask(exportId));
+        exportedFileUrlInfo.expiryTime = time:utcToString(check getExpiryTimeForExportTask(exportId));
     }
 
-    return {
-        "exportId": exportId,
-        "expiryTime": expiryTimeString,
-        "output": output
-    };
+    return exportedFileUrlInfo;
 }

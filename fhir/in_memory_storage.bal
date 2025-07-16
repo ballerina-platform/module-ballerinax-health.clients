@@ -62,7 +62,7 @@ isolated function removeExportTaskFromMemory(string exportId, decimal? expiryTim
     lock {
         _ = exportTasks.removeIfHasKey(exportId);
     }
-    
+
     if expiryTime is decimal {
         lock {
             exportTaskExpiryTimes[exportId] = time:utcAddSeconds(time:utcNow(), expiryTime);
