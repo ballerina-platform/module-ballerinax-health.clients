@@ -83,8 +83,8 @@ public isolated client class FHIRConnector {
                 fileServerPassword: bulkConfig.fileServerPassword,
                 fileServerPort: bulkConfig.fileServerPort,
                 localDirectory: bulkConfig.localDirectory,
-                tempFileExpiryInSec: bulkConfig.tempFileExpiryInSec,
-                pollingIntervalInSec: bulkConfig.pollingIntervalInSec
+                tempFileExpiryTime: bulkConfig.tempFileExpiryTime,
+                pollingInterval: bulkConfig.pollingInterval
             };
             self.fileServerUrl = bulkConfig.fileServerUrl;
             self.bulkFileHttpClient = bulkConfig.fileServerUrl != "" ? (check new (bulkConfig.fileServerUrl, constructHttpConfigs(bulkConfig))) : self.httpClient;

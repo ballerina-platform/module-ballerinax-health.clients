@@ -31,8 +31,8 @@ FHIRConnectorConfig config = {
         fileServerType: "local", // use 'ftp' to test with FTP server
         fileServerUrl: "localhost",
         fileServerDirectory: "/exports",
-        pollingIntervalInSec: 0.5d,
-        tempFileExpiryInSec: waitForExpire
+        pollingInterval: 0.5d,
+        tempFileExpiryTime: waitForExpire
     }
 };
 FHIRConnector fhirConnector;
@@ -44,7 +44,7 @@ FHIRConnectorConfig urlRewriteConfig = {
     replacementURL: replacementUrl,
     bulkExportConfig: {
         fileServerType: "local",
-        pollingIntervalInSec: 0.5d
+        pollingInterval: 0.5d
     }
 };
 FHIRConnector urlRewriteConnector;

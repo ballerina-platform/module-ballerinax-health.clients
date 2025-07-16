@@ -58,12 +58,12 @@ isolated function getExportTaskFromMemory(string exportId) returns ExportTask|er
     }
 }
 
-isolated function removeExportTaskFromMemory(string exportId, decimal expiryInSec) {
+isolated function removeExportTaskFromMemory(string exportId, decimal expiryTime) {
     lock {
         _ = exportTasks.removeIfHasKey(exportId);
     }
     lock {
-        exportTaskExpiryTimes[exportId] = time:utcAddSeconds(time:utcNow(), expiryInSec);
+        exportTaskExpiryTimes[exportId] = time:utcAddSeconds(time:utcNow(), expiryTime);
     }
 }
 

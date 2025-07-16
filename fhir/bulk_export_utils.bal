@@ -165,10 +165,10 @@ class PollingTask {
                         }
 
                         log:printDebug("Removing the export task from memory and local directory after expiry.");
-                        removeExportTaskFromMemory(self.exportId, self.bulkExportConfig.tempFileExpiryInSec);
+                        removeExportTaskFromMemory(self.exportId, self.bulkExportConfig.tempFileExpiryTime);
 
                         // Remove the data after expiry
-                        _ = start removeData(self.exportId, self.bulkExportConfig.localDirectory, self.bulkExportConfig.tempFileExpiryInSec);
+                        _ = start removeData(self.exportId, self.bulkExportConfig.localDirectory, self.bulkExportConfig.tempFileExpiryTime);
 
                         lock {
                             updateExportTaskStatusInMemory(taskMap = exportTasks, exportTaskId = self.exportId, newStatus = "Export Completed. Files Downloaded.");
@@ -235,17 +235,17 @@ isolated function submitBackgroundJob(string taskId, string location, BulkExport
                     location = location,
                     config = config
                 ),
-                config.pollingIntervalInSec);
+                config.pollingInterval);
         log:printDebug("Polling location recieved: " + location);
     } on fail var e {
         log:printError("Error occurred while getting the location or scheduling the Job", e);
     }
 }
 
-isolated function removeData(string exportId, string export_directory, decimal expiryInSec) returns error? {
-    log:printDebug("Removing data for export id: " + exportId + " after expiry of " + expiryInSec.toString() + " seconds.");
+isolated function removeData(string exportId, string export_directory, decimal expiryTime) returns error? {
+    log:printDebug("Removing data for export id: " + exportId + " after expiry of " + expiryTime.toString() + " seconds.");
     worker name {
-        runtime:sleep(expiryInSec);
+        runtime:sleep(expiryTime);
     }
     wait name;
 

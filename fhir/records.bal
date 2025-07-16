@@ -98,8 +98,8 @@ public type FHIRConnectorConfig record {|
 # + fileServerPassword - Password to access the server, for ftp
 # + fileServerDirectory - Directory to save the exported files in the file server, for ftp
 # + fileServerPort - Port to access the file server, default is 21
-# + pollingIntervalInSec - Bulk status polling interval in seconds
-# + tempFileExpiryInSec - Expiration period for temporary export files in seconds
+# + pollingInterval - Bulk status polling interval in seconds
+# + tempFileExpiryTime - Expiration period for temporary export files in seconds
 public type BulkExportConfig record {|
     *http:ClientConfiguration;
 
@@ -116,11 +116,11 @@ public type BulkExportConfig record {|
     @display {label: "Directory to save exported files"}
     string fileServerDirectory = "";
     @display {label: "Bulk status polling interval in seconds"}
-    decimal pollingIntervalInSec = DEFAULT_POLLING_INTERVAL;
+    decimal pollingInterval = DEFAULT_POLLING_INTERVAL;
     @display {label: "Local directory to save exported files"}
     string localDirectory = DEFAULT_EXPORT_DIRECTORY;
     @display {label: "Expiration period for temporary export files in seconds"}
-    decimal tempFileExpiryInSec = DEFAULT_TEMP_FILE_EXPIRY;
+    decimal tempFileExpiryTime = DEFAULT_TEMP_FILE_EXPIRY;
 |};
 
 # Represents a success response coming from the fhir server side
