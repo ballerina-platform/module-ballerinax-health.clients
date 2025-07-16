@@ -567,30 +567,6 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
     );
 }
 
-isolated function getBulkFileResponse(http:Response response) returns FHIRBulkFileResponse|FHIRError {
-    do {
-        int statusCode = response.statusCode;
-        map<string> responseHeaders = extractHeadersFromResponse(response);
-
-        if statusCode == http:STATUS_OK {
-            return {
-                httpStatusCode: statusCode,
-                serverResponseHeaders: responseHeaders,
-                dataStream: check response.getByteStream()
-            };
-        } else {
-            return error FHIRServerError(
-                FHIR_SERVER_ERROR,
-                httpStatusCode = statusCode,
-                'resource = check extractResponseBody(response),
-                serverResponseHeaders = responseHeaders
-            );
-        }
-    } on fail var e {
-        return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
-    }
-}
-
 isolated function extractPath(string fullUrl, string baseUrl) returns string => fullUrl.substring(baseUrl.length());
 
 // Replaces FHIR server base url in the FHIR resource with the given url.

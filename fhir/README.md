@@ -219,12 +219,6 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkExp
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkStatus(exportId = "123456");
     ```
 
-**Download Exported File:**
-
-```ballerina
-fhir_client:FHIRBulkFileResponse|fhir_client:FHIRError response = fhirConnector->bulkFile(exportId, fhir_client:EXPORT_PATIENT);
-```
-
 ### CapabilityStatement Validation
 
 > **Note:** This validation is available in `ballerinax/health.clients.fhir` version 3.0.0 onwards.
@@ -241,15 +235,15 @@ To enable bulk export, you must configure the `bulkExportConfig` in your `FHIRCo
 
 ```ballerina
 fhir_client:BulkExportConfig bulkExportConfig = {
-    fileServerType: "local",                // type of the file server 'fhir', 'ftp' or 'local'
-    fileServerUrl: "<url>",                 // host url of the file server 
-    fileServerDirectory: "<dir-path>",      // directory to save the exported files in the file server, if type is ftp
-    fileServerPort: 21,                     // port of the file server (ftp), default = 21 
-    fileServerUsername: "<username>",       // username to access the server, if type is ftp
-    fileServerPassword: "<password>",       // password to access the server, if type if ftp
-    localDirectory = "temp_bulk_export",    // local directory to save the exported files, for local file server, default = 'bulk_export'
-    pollingInterval: 2.0d,                  // bulk status polling interval in seconds, default = 2.0d
-    tempFileExpiryTime = 7200              // expiration period for temporary export files in seconds, default = 86400.0d (1 day)
+    fileServerType: "local",             // type of the file server 'fhir', 'ftp' or 'local'
+    fileServerUrl: "<url>",              // host url of the file server 
+    fileServerDirectory: "<dir-path>",   // directory to save the exported files in the file server, if type is ftp
+    fileServerPort: 21,                  // port of the file server (ftp), default = 21 
+    fileServerUsername: "<username>",    // username to access the server, if type is ftp
+    fileServerPassword: "<password>",    // password to access the server, if type if ftp
+    tempDirectory = "temp_bulk_export",  // local directory to save the exported files (default = 'bulk_export'), if type is local
+    tempFileExpiryTime = 7200,           // expiration period for temporary export files in seconds (default = 86400.0d), if type is local
+    pollingInterval: 2.0d                // bulk status polling interval in seconds (default = 2.0d)
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
@@ -272,7 +266,7 @@ import ballerinax/health.clients.fhir as fhir_client;
 fhir_client:BulkExportConfig bulkExportConfig = {
     fileServerType: "local",
     tempFileExpiryTime: 7200, // two hours
-    localDirectory: "temp_bulk_export"
+    tempDirectory: "temp_bulk_export"
 };
 
 fhir_client:FHIRConnectorConfig fhirServerConfig = {

@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/io;
 import ballerina/log;
 import ballerina/test;
 
@@ -611,32 +610,6 @@ function testBulkExportFullProcess() returns error? {
     // Patient level export status check: got the completed export
     FHIRResponse result4 = check fhirConnector->bulkStatus(exportId = exportResult.exportId);
     test:assertEquals(result4.httpStatusCode, 200, "Failed to return the correct status code");
-
-    // check the exported file manifest
-    FHIRBulkFileResponse result3 = check fhirConnector->bulkFile(exportResult.exportId, "Patient");
-    test:assertEquals(result3.httpStatusCode, 200, "Failed to return the correct status code");
-    stream<byte[], io:Error?> fileStream = result3.dataStream;
-    byte[][] fileBytes = check from var i in fileStream
-        select i;
-    byte[] fileData = [];
-    foreach byte[] byteArr in fileBytes {
-        fileData.push(...byteArr);
-    }
-    string fileContent = check string:fromBytes(fileData);
-    test:assertEquals(fileContent, testBulkExportFileData, "Failed to return the correct file content");
-
-    // invalid export ID
-    FHIRBulkFileResponse|FHIRError result5 = fhirConnector->bulkFile("invalidExportId", "Patient");
-    if result5 is FHIRError {
-        if result5 is FHIRServerError {
-            FHIRServerErrorDetails e = result5.detail();
-            test:assertEquals(e.httpStatusCode, 400, "Failed to return the correct status code for invalid export ID");
-        } else {
-            test:assertFail("Failed to respond with the correct error type:FhirServerError for invalid export ID");
-        }
-    } else {
-        test:assertFail("Failed to respond with the correct error for invalid export ID");
-    }
 
     waitForExpiringExport(waitForExpire);
 

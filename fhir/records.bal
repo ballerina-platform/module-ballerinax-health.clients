@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/io;
 import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
@@ -93,7 +92,7 @@ public type FHIRConnectorConfig record {|
 # - ftp: Send the exported files to a FTP server
 # - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
-# + localDirectory - Local directory to save the exported files, for local file server
+# + tempDirectory - Local directory to save the exported files, for local file server
 # + fileServerUsername - Username to access the server, for ftp
 # + fileServerPassword - Password to access the server, for ftp
 # + fileServerDirectory - Directory to save the exported files in the file server, for ftp
@@ -118,7 +117,7 @@ public type BulkExportConfig record {|
     @display {label: "Bulk status polling interval in seconds"}
     decimal pollingInterval = DEFAULT_POLLING_INTERVAL;
     @display {label: "Local directory to save exported files"}
-    string localDirectory = DEFAULT_EXPORT_DIRECTORY;
+    string tempDirectory = DEFAULT_EXPORT_DIRECTORY;
     @display {label: "Expiration period for temporary export files in seconds"}
     decimal tempFileExpiryTime = DEFAULT_TEMP_FILE_EXPIRY;
 |};
@@ -131,17 +130,6 @@ public type BulkExportConfig record {|
 public type FHIRResponse record {|
     int httpStatusCode;
     json|xml 'resource;
-    map<string> serverResponseHeaders;
-|};
-
-# Represents a bulk file response coming from the fhir server side
-#
-# + httpStatusCode - HTTP status code returned from the server 
-# + dataStream - Bulk data file stream   
-# + serverResponseHeaders - Map of header values returned from the server
-public type FHIRBulkFileResponse record {|
-    int httpStatusCode;
-    stream<byte[], io:Error?> dataStream;
     map<string> serverResponseHeaders;
 |};
 
