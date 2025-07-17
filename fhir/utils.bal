@@ -16,7 +16,6 @@
 
 import ballerina/http;
 import ballerina/log;
-import ballerina/regex;
 import ballerina/url;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
@@ -634,14 +633,15 @@ isolated function sanitizeRequestUrl(string url) returns string {
     return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
 }
 
+// regex in FHIR client
 isolated function matchesQueryPattern(string input) returns boolean {
     // Regex: key=value[&key=value]*
-    string pattern = "^[^=&?]+=[^=&]+(?:&[^=&?]+=[^=&]+)*$";
-    return regex:matches(input, pattern);
+    string:RegExp pattern = re `^[^=&?]+=[^=&]+(?:&[^=&?]+=[^=&]+)*$`;
+    return pattern.isFullMatch(input);
 }
 
 isolated function isSupportedFhirVersion(string fhirVersion) returns boolean {
     // Accepts FHIR versions R4 (4.x.x) and onwards (e.g., 4.0.1, 5.0.0)
-    string versionPattern = "^(4|5)\\.[0-9]+\\.[0-9]+$";
-    return regex:matches(fhirVersion, versionPattern);
+    string:RegExp versionPattern = re `^(4|5)\.[0-9]+\.[0-9]+$`;
+    return versionPattern.isFullMatch(fhirVersion);
 }
