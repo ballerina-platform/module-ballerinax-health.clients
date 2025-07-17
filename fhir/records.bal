@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/io;
 import ballerinax/health.base.auth;
 
 # Represents FHIR client connector configurations
@@ -25,7 +24,7 @@ import ballerinax/health.base.auth;
 # + authConfig - Authentication configs that will be used to create the http client  
 # + urlRewrite - Whether to rewrite FHIR server URL, can be configured at method level as well  
 # + replacementURL - Base url of the service to rewrite FHIR server URLs  
-# + bulkFileServerConfig - Bulk export file server configs  
+# + bulkExportConfig - Bulk export file server configs  
 # + httpVersion - The HTTP version understood by the client  
 # + http1Settings - Configurations related to HTTP/1.x protocol
 # + http2Settings - Configurations related to HTTP/2 protocol  
@@ -53,46 +52,74 @@ public type FHIRConnectorConfig record {|
     @display {label: "Base url of the service to rewrite FHIR server URLs"}
     string replacementURL?;
     @display {label: "Bulk export file server configs"}
-    BulkFileServerConfig bulkFileServerConfig?;
-    @display {label:"The HTTP version understood by the client"}
+    BulkExportConfig bulkExportConfig?;
+    @display {label: "The HTTP version understood by the client"}
     http:HttpVersion httpVersion = http:HTTP_2_0;
-    @display {label:"Configurations related to HTTP/1.x protocol"}
+    @display {label: "Configurations related to HTTP/1.x protocol"}
     http:ClientHttp1Settings http1Settings = {};
-    @display {label:"Configurations related to HTTP/2 protocol"}
+    @display {label: "Configurations related to HTTP/2 protocol"}
     http:ClientHttp2Settings http2Settings = {};
-    @display {label:"The maximum time to wait (in seconds) for a response before closing the connection"}
+    @display {label: "The maximum time to wait (in seconds) for a response before closing the connection"}
     decimal timeout = 30;
-    @display {label:"The choice of setting `forwarded`/`x-forwarded` header"}
+    @display {label: "The choice of setting `forwarded`/`x-forwarded` header"}
     string forwarded = "disable";
-    @display {label:"Configurations associated with request pooling"}
+    @display {label: "Configurations associated with request pooling"}
     http:PoolConfiguration? poolConfig = ();
-    @display {label:"HTTP caching related configurations"}
+    @display {label: "HTTP caching related configurations"}
     http:CacheConfig cache = {};
-    @display {label:"Specifies the way of handling compression (`accept-encoding`) header"}
+    @display {label: "Specifies the way of handling compression (`accept-encoding`) header"}
     http:Compression compression = http:COMPRESSION_AUTO;
-    @display {label:"Configurations associated with the behaviour of the Circuit Breaker"}
+    @display {label: "Configurations associated with the behaviour of the Circuit Breaker"}
     http:CircuitBreakerConfig? circuitBreaker = ();
-    @display {label:"Configurations associated with retrying"}
+    @display {label: "Configurations associated with retrying"}
     http:RetryConfig? retryConfig = ();
-    @display {label:"Configurations associated with inbound response size limits"}
+    @display {label: "Configurations associated with inbound response size limits"}
     http:ResponseLimitConfigs responseLimits = {};
-    @display {label:"Proxy server related options"}
+    @display {label: "Proxy server related options"}
     http:ProxyConfig? proxy = ();
-    @display {label:"Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default"}
+    @display {label: "Enables the inbound payload validation functionalty which provided by the constraint package. Enabled by default"}
     boolean validation = true;
-    @display {label:"Provides settings related to client socket configuration"}
+    @display {label: "Provides settings related to client socket configuration"}
     http:ClientSocketConfig socketConfig = {};
-    @display {label:"Provides settings related to SSL/TLS"}
+    @display {label: "Provides settings related to SSL/TLS"}
     http:ClientSecureSocket? secureSocket = ();
 |};
 
 # Configs of the file server where bulk export files will be stored
 #
+# + fileServerType - fhir, ftp, or local
+# - fhir: Sync the exported files with a FHIR server
+# - ftp: Send the exported files to a FTP server
+# - local: Save the exported files in the local file system
 # + fileServerUrl - Bulk export file server base url
-public type BulkFileServerConfig record {|
+# + fileServerUsername - Username to access the server, for ftp
+# + fileServerPassword - Password to access the server, for ftp
+# + fileServerDirectory - Directory to save the exported files in the file server, for ftp
+# + fileServerPort - Port to access the file server, default is 21
+# + pollingInterval - Bulk status polling interval in seconds, default is 2 seconds
+# + tempDirectory - Local directory to save the exported files, for local file server
+# + tempFileExpiryTime - Expiration period for temporary export files in seconds, for local file server
+public type BulkExportConfig record {|
     *http:ClientConfiguration;
+
+    @display {label: "File server type"}
+    ExportFileServerType fileServerType = LOCAL;
     @display {label: "Bulk export file server base url"}
-    string fileServerUrl;
+    string fileServerUrl = "";
+    @display {label: "File server port"}
+    int fileServerPort = 21;
+    @display {label: "File server username"}
+    string fileServerUsername = "";
+    @display {label: "File server password"}
+    string fileServerPassword = "";
+    @display {label: "Directory to save exported files"}
+    string fileServerDirectory = "";
+    @display {label: "Bulk status polling interval in seconds"}
+    decimal pollingInterval = DEFAULT_POLLING_INTERVAL;
+    @display {label: "Local directory to save exported files"}
+    string tempDirectory = DEFAULT_EXPORT_DIRECTORY;
+    @display {label: "Expiration period for temporary export files in seconds"}
+    decimal tempFileExpiryTime = DEFAULT_TEMP_FILE_EXPIRY;
 |};
 
 # Represents a success response coming from the fhir server side
@@ -103,18 +130,6 @@ public type BulkFileServerConfig record {|
 public type FHIRResponse record {|
     int httpStatusCode;
     json|xml 'resource;
-    map<string> serverResponseHeaders;
-
-|};
-
-# Represents a bulk file response coming from the fhir server side
-#
-# + httpStatusCode - HTTP status code returned from the server 
-# + dataStream - Bulk data file stream   
-# + serverResponseHeaders - Map of header values returned from the server
-public type FHIRBulkFileResponse record {|
-    int httpStatusCode;
-    stream<byte[], io:Error?> dataStream;
     map<string> serverResponseHeaders;
 |};
 
@@ -127,7 +142,6 @@ public type FHIRServerErrorDetails record {|
     int httpStatusCode;
     json|xml 'resource;
     map<string> serverResponseHeaders;
-
 |};
 
 # Represents the error type for an unsuccessful interaction with the server 
@@ -191,7 +205,6 @@ public type BaseSearchParameters record {|
     string _content?;
     string _filter?;
     string _has?;
-
 |};
 
 # Represents parameters that can be used in a search interaction, add more name value pairs if necessary
@@ -230,6 +243,26 @@ public type BulkExportParameters record {
 # - Or, provide conditional parameters as a `SearchParameters` or `map<string[]>` to construct the conditional URL.
 public type OnCondition SearchParameters|map<string[]>|string;
 
+# Represents the exported file URLs and related metadata for a bulk export operation.
+#
+# + exportId - The unique identifier for the export operation
+# + expiryTime - The expiration time for the exported files (as a string, e.g., UTC timestamp or "N/A")
+# + output - An array of OutputFile records, each containing details about an exported file
+public type ExportedFileUrlInfo record {|
+    string exportId;
+    string expiryTime?;
+    OutputFile[] output;
+|};
+
+# Represents metadata for an exported FHIR resource file.
+#
+# + type - The FHIR resource type (e.g., "Patient", "Observation") of the exported file
+# + url - The URL or path where the exported file can be accessed
+public type OutputFile record {
+    string 'type;
+    string url;
+};
+
 type ResourceTypeNId record {|
     string 'type;
     string? id;
@@ -249,4 +282,30 @@ type Pagination record {|
     string next?;
     string previous?;
     string self?;
+|};
+
+// record to hold summary of exports.
+type ExportSummary record {
+    string transactionTime;
+    string request;
+    boolean requiresAccessToken;
+    OutputFile[] output;
+    string[] deleted;
+    string[] 'error;
+};
+
+// Use to keep track of each polling event.
+type PollingEvent record {|
+    string id;
+    string eventStatus;
+    string exportStatus?;
+    string progress?;
+|};
+
+// Use to keep track of ongoing/completed exports.
+type ExportTask record {|
+    string id;
+    string lastUpdated?;
+    string lastStatus;
+    PollingEvent[] pollingEvents;
 |};

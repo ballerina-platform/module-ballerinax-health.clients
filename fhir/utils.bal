@@ -16,8 +16,8 @@
 
 import ballerina/http;
 import ballerina/log;
-import ballerina/url;
 import ballerina/regex;
+import ballerina/url;
 
 isolated function setFormatNSummaryParameters(MimeType? mimeType, SummaryType? summary) returns string {
     string paramString = "";
@@ -236,14 +236,14 @@ isolated function buildQueryParamsString(SearchParameters|map<string[]>? qparams
                 paramString += key + EQUALS_SIGN + check url:encode(val, "UTF-8") + AMPERSAND;
             }
         } on fail var e {
-        	log:printError(string `Error encoding parameter value`, e);
+            log:printError(string `Error encoding parameter value`, e);
         }
     } else if (qparams is map<string[]>) {
         foreach string key in qparams.keys() {
             foreach string param in qparams.get(key) {
                 paramString += key + EQUALS_SIGN + check url:encode(param, "UTF-8") + AMPERSAND;
-            } on fail var e{
-            	log:printError(string `Error encoding parameter value: ${param}`, e);
+            } on fail var e {
+                log:printError(string `Error encoding parameter value: ${param}`, e);
             }
         }
     }
@@ -567,30 +567,6 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
     );
 }
 
-isolated function getBulkFileResponse(http:Response response) returns FHIRBulkFileResponse|FHIRError {
-    do {
-        int statusCode = response.statusCode;
-        map<string> responseHeaders = extractHeadersFromResponse(response);
-
-        if statusCode == http:STATUS_OK {
-            return {
-                httpStatusCode: statusCode,
-                serverResponseHeaders: responseHeaders,
-                dataStream: check response.getByteStream()
-            };
-        } else {
-            return error FHIRServerError(
-                FHIR_SERVER_ERROR,
-                httpStatusCode = statusCode,
-                'resource = check extractResponseBody(response),
-                serverResponseHeaders = responseHeaders
-            );
-        }
-    } on fail var e {
-        return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
-    }
-}
-
 isolated function extractPath(string fullUrl, string baseUrl) returns string => fullUrl.substring(baseUrl.length());
 
 // Replaces FHIR server base url in the FHIR resource with the given url.
@@ -626,7 +602,7 @@ isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string
     }
 }
 
-isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig config) returns http:ClientConfiguration {
+isolated function constructHttpConfigs(FHIRConnectorConfig|BulkExportConfig config) returns http:ClientConfiguration {
     http:ClientConfiguration httpConfig = {
         httpVersion: config.httpVersion,
         http1Settings: config.http1Settings.cloneReadOnly(),
@@ -643,9 +619,9 @@ isolated function constructHttpConfigs(FHIRConnectorConfig|BulkFileServerConfig 
         validation: config.validation,
         socketConfig: config.socketConfig,
         secureSocket: config.secureSocket,
-        auth: config is FHIRConnectorConfig 
-                    ? (config.authConfig is http:ClientAuthConfig ? <http:ClientAuthConfig?>config.authConfig : ()) 
-                    : config.auth
+        auth: config is FHIRConnectorConfig
+            ? (config.authConfig is http:ClientAuthConfig ? <http:ClientAuthConfig?>config.authConfig : ())
+            : config.auth
     };
     return httpConfig;
 }
@@ -664,7 +640,7 @@ isolated function matchesQueryPattern(string input) returns boolean {
     return regex:matches(input, pattern);
 }
 
-function isSupportedFhirVersion(string fhirVersion) returns boolean {
+isolated function isSupportedFhirVersion(string fhirVersion) returns boolean {
     // Accepts FHIR versions R4 (4.x.x) and onwards (e.g., 4.0.1, 5.0.0)
     string versionPattern = "^(4|5)\\.[0-9]+\\.[0-9]+$";
     return regex:matches(fhirVersion, versionPattern);

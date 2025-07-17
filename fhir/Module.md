@@ -78,7 +78,7 @@ add the file server configurations to the connector configuration record.
         baseURL: "https://test.org/fhir/r4",
         mimeType: fhir:FHIR_JSON,
         authConfig : ehrSystemAuthConfig,
-        bulkFileServerConfig: {
+        bulkExportConfig: {
             fileServerBaseURL: "https://storage.test.org",
             fileServerAuthConfig: fileServerAuthConfig
         }
