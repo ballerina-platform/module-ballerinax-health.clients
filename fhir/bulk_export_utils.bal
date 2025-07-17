@@ -20,7 +20,6 @@ import ballerina/http;
 import ballerina/io;
 import ballerina/lang.runtime;
 import ballerina/log;
-import ballerina/regex;
 import ballerina/task;
 import ballerina/time;
 
@@ -66,11 +65,11 @@ function saveFileInFS(string downloadLink, string fileName) returns error? {
 
 function uploadFileToFTP(string downloadLink, ftp:Client fileClient, string ftpFilePath) returns error? {
     log:printDebug("Uploading file to FTP server.", url = downloadLink, ftpFilePath = ftpFilePath);
-    
+
     // download the file as a stream
     http:Client statusClientV2 = check new (downloadLink);
     stream<byte[], io:Error?> streamer = check getFileAsStream(downloadLink, statusClientV2) ?: new ();
-    
+
     // clone the stream to make it readonly
     // This is to ensure that the stream is read-only when uploading to FTP
     // as FTP client expects a read-only stream.
@@ -285,6 +284,8 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
         exportId: exportId,
         output: []
     };
+    string:RegExp exportedFileRegex = re `-exported.ndjson`;
+    string:RegExp backwardSlashRegex = re `\\`;
 
     if config.fileServerType == FTP {
         ftp:Client fileClient = check new ({
@@ -301,7 +302,7 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
         ftp:FileInfo[] fileDataList = check fileClient->list(string `${config.fileServerDirectory}/${exportId}`);
 
         foreach ftp:FileInfo fileData in fileDataList {
-            string resourceType = regex:split(fileData.name, "-exported.ndjson")[0];
+            string resourceType = exportedFileRegex.split(fileData.name)[0];
 
             exportedFileUrlInfo.output.push({
                 url: fileData.friendlyURI,
@@ -321,15 +322,15 @@ isolated function getExportedFileUrls(string exportId, BulkExportConfig config) 
         file:MetaData[] exportedDir = check file:readDir(directoryPath);
 
         foreach file:MetaData exportedFile in exportedDir {
-            string[] nonEmptyParts = regex:split(exportedFile.absPath, "\\\\").filter(s => s != "");
+            string[] nonEmptyParts = backwardSlashRegex.split(exportedFile.absPath).filter(s => s != "");
             string lastPart = nonEmptyParts[nonEmptyParts.length() - 1];
 
             // get the resource type from the file name
-            string resourceType = regex:split(lastPart, "-exported.ndjson")[0];
+            string resourceType = exportedFileRegex.split(lastPart)[0];
 
             string absPath = exportedFile.absPath;
             exportedFileUrlInfo.output.push({
-                url: regex:replaceAll(absPath, "\\\\", PATH_SEPARATOR),
+                url: backwardSlashRegex.replaceAll(absPath, PATH_SEPARATOR),
                 'type: resourceType
             });
         }
