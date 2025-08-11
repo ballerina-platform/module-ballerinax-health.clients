@@ -388,7 +388,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.clients.fhir"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
 	{org = "ballerina", name = "file"},
 	{org = "ballerina", name = "ftp"},
