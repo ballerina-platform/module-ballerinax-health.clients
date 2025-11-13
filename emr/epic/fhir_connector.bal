@@ -47,7 +47,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Account resources"}
-    remote isolated function searchAccount(
+    remote function searchAccount(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -83,7 +83,7 @@ public client class FHIRClientConnector {
     # + substance - Search parameter for substance (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search AdverseEvent resources"}
-    remote isolated function searchAdverseEvent(
+    remote function searchAdverseEvent(
             string? research_subject = (),
             string? seriousness = (),
             string? study = (),
@@ -156,7 +156,7 @@ public client class FHIRClientConnector {
     # + verification_status - Search parameter for verification-status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search AllergyIntolerance resources"}
-    remote isolated function searchAllergyIntolerance(
+    remote function searchAllergyIntolerance(
             string? clinical_status = (),
             string? patient = (),
             string? _count = (),
@@ -229,7 +229,7 @@ public client class FHIRClientConnector {
     # + supporting_info - Search parameter for supporting-info (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Appointment resources"}
-    remote isolated function searchAppointment(
+    remote function searchAppointment(
             string? date = (),
             string? identifier = (),
             string? onlyscannable = (),
@@ -288,7 +288,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Binary resources"}
-    remote isolated function searchBinary(
+    remote function searchBinary(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -324,7 +324,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search BodyStructure resources"}
-    remote isolated function searchBodyStructure(
+    remote function searchBodyStructure(
             string? identifier = (),
             string? location = (),
             string? morphology = (),
@@ -384,7 +384,7 @@ public client class FHIRClientConnector {
     # + replaces - Search parameter for replaces (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search CarePlan resources"}
-    remote isolated function searchCarePlan(
+    remote function searchCarePlan(
             string? activity_date = (),
             string? category = (),
             string? encounter = (),
@@ -453,7 +453,7 @@ public client class FHIRClientConnector {
     # + participant - Search parameter for participant (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search CareTeam resources"}
-    remote isolated function searchCareTeam(
+    remote function searchCareTeam(
             string? patient = (),
             string? status = (),
             string? subject = (),
@@ -492,7 +492,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Claim resources"}
-    remote isolated function searchClaim(
+    remote function searchClaim(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -537,7 +537,7 @@ public client class FHIRClientConnector {
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Communication resources"}
-    remote isolated function searchCommunication(
+    remote function searchCommunication(
             string? based_on = (),
             string? category = (),
             string? encounter = (),
@@ -631,7 +631,7 @@ public client class FHIRClientConnector {
     # + verification_status - Search parameter for verification-status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Condition resources"}
-    remote isolated function searchCondition(
+    remote function searchCondition(
             string? abatement_date = (),
             string? category = (),
             string? clinical_status = (),
@@ -708,7 +708,7 @@ public client class FHIRClientConnector {
     # + source_reference - Search parameter for source-reference (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Consent resources"}
-    remote isolated function searchConsent(
+    remote function searchConsent(
             string? category = (),
             string? patient = (),
             string? status = (),
@@ -763,7 +763,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Contract resources"}
-    remote isolated function searchContract(
+    remote function searchContract(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -797,7 +797,7 @@ public client class FHIRClientConnector {
     # + 'type - Search parameter for type (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Coverage resources"}
-    remote isolated function searchCoverage(
+    remote function searchCoverage(
             string? beneficiary = (),
             string? patient = (),
             string? _count = (),
@@ -853,7 +853,7 @@ public client class FHIRClientConnector {
     # + 'type - Search parameter for type (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Device resources"}
-    remote isolated function searchDevice(
+    remote function searchDevice(
             string? device_name = (),
             string? manufacturer = (),
             string? model = (),
@@ -915,7 +915,7 @@ public client class FHIRClientConnector {
     # + subject - Search parameter for subject (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search DeviceRequest resources"}
-    remote isolated function searchDeviceRequest(
+    remote function searchDeviceRequest(
             string? patient = (),
             string? status = (),
             string? _count = (),
@@ -976,7 +976,7 @@ public client class FHIRClientConnector {
     # + identifier - Search parameter for identifier (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search DeviceUseStatement resources"}
-    remote isolated function searchDeviceUseStatement(
+    remote function searchDeviceUseStatement(
             string? patient = (),
             string? subject = (),
             string? _count = (),
@@ -1023,7 +1023,7 @@ public client class FHIRClientConnector {
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search DiagnosticReport resources"}
-    remote isolated function searchDiagnosticReport(
+    remote function searchDiagnosticReport(
             string? category = (),
             string? code = (),
             string? date = (),
@@ -1119,7 +1119,7 @@ public client class FHIRClientConnector {
     # + setting - Search parameter for setting (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search DocumentReference resources"}
-    remote isolated function searchDocumentReference(
+    remote function searchDocumentReference(
             string? author = (),
             string? category = (),
             string? date = (),
@@ -1223,7 +1223,7 @@ public client class FHIRClientConnector {
     # + 'type - Search parameter for type (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Encounter resources"}
-    remote isolated function searchEncounter(
+    remote function searchEncounter(
             string? 'class = (),
             string? date = (),
             string? identifier = (),
@@ -1292,7 +1292,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Endpoint resources"}
-    remote isolated function searchEndpoint(
+    remote function searchEndpoint(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -1324,7 +1324,7 @@ public client class FHIRClientConnector {
     # + organization - Search parameter for organization (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search EpisodeOfCare resources"}
-    remote isolated function searchEpisodeOfCare(
+    remote function searchEpisodeOfCare(
             string? patient = (),
             string? status = (),
             string? 'type = (),
@@ -1383,7 +1383,7 @@ public client class FHIRClientConnector {
     # + subdetail_udi - Search parameter for subdetail-udi (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ExplanationOfBenefit resources"}
-    remote isolated function searchExplanationOfBenefit(
+    remote function searchExplanationOfBenefit(
             string? created = (),
             string? patient = (),
             string? use = (),
@@ -1450,7 +1450,7 @@ public client class FHIRClientConnector {
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search FamilyMemberHistory resources"}
-    remote isolated function searchFamilyMemberHistory(
+    remote function searchFamilyMemberHistory(
             string? patient = (),
             string? _count = (),
             string? _id = (),
@@ -1497,7 +1497,7 @@ public client class FHIRClientConnector {
     # + identifier - Search parameter for identifier (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Flag resources"}
-    remote isolated function searchFlag(
+    remote function searchFlag(
             string? category = (),
             string? encounter = (),
             string? patient = (),
@@ -1544,7 +1544,7 @@ public client class FHIRClientConnector {
     # + target_date - Search parameter for target-date (date) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Goal resources"}
-    remote isolated function searchGoal(
+    remote function searchGoal(
             string? category = (),
             string? lifecycle_status = (),
             string? patient = (),
@@ -1583,7 +1583,7 @@ public client class FHIRClientConnector {
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Group resources"}
-    remote isolated function searchGroup(
+    remote function searchGroup(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -1631,7 +1631,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ImagingStudy resources"}
-    remote isolated function searchImagingStudy(
+    remote function searchImagingStudy(
             string? identifier = (),
             string? patient = (),
             string? subject = (),
@@ -1704,7 +1704,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + vaccine_code - Search parameter for vaccine-code (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Immunization resources"}
-    remote isolated function searchImmunization(
+    remote function searchImmunization(
             string? date = (),
             string? patient = (),
             string? status = (),
@@ -1767,7 +1767,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + vaccine_type - Search parameter for vaccine-type (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ImmunizationRecommendation resources"}
-    remote isolated function searchImmunizationRecommendation(
+    remote function searchImmunizationRecommendation(
             string? patient = (),
             string? _count = (),
             string? _id = (),
@@ -1818,7 +1818,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + title - Search parameter for title (string) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search List resources"}
-    remote isolated function searchList(
+    remote function searchList(
             string? code = (),
             string? encounter = (),
             string? identifier = (),
@@ -1879,7 +1879,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Location resources"}
-    remote isolated function searchLocation(
+    remote function searchLocation(
             string? 'type = (),
             string? _count = (),
             string? _id = (),
@@ -1930,7 +1930,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Measure resources"}
-    remote isolated function searchMeasure(
+    remote function searchMeasure(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -1964,7 +1964,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search MeasureReport resources"}
-    remote isolated function searchMeasureReport(
+    remote function searchMeasureReport(
             string? epic_group_id = (),
             string? patient = (),
             string? subject = (),
@@ -2009,7 +2009,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Media resources"}
-    remote isolated function searchMedia(
+    remote function searchMedia(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2032,7 +2032,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Medication resources"}
-    remote isolated function searchMedication(
+    remote function searchMedication(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2068,7 +2068,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + reason_not_given - Search parameter for reason-not-given (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search MedicationAdministration resources"}
-    remote isolated function searchMedicationAdministration(
+    remote function searchMedicationAdministration(
             string? context = (),
             string? effective_time = (),
             string? patient = (),
@@ -2133,7 +2133,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + whenprepared - Search parameter for whenprepared (date) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search MedicationDispense resources"}
-    remote isolated function searchMedicationDispense(
+    remote function searchMedicationDispense(
             string? category = (),
             string? patient = (),
             string? subject = (),
@@ -2204,7 +2204,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + requester - Search parameter for requester (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search MedicationRequest resources"}
-    remote isolated function searchMedicationRequest(
+    remote function searchMedicationRequest(
             string? category = (),
             string? date = (),
             string? intent = (),
@@ -2270,7 +2270,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + supplement - Search parameter for supplement (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search NutritionOrder resources"}
-    remote isolated function searchNutritionOrder(
+    remote function searchNutritionOrder(
             string? patient = (),
             string? _count = (),
             string? _id = (),
@@ -2351,7 +2351,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + value_string - Search parameter for value-string (string) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Observation resources"}
-    remote isolated function searchObservation(
+    remote function searchObservation(
             string? based_on = (),
             string? category = (),
             string? code = (),
@@ -2438,7 +2438,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Organization resources"}
-    remote isolated function searchOrganization(
+    remote function searchOrganization(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2497,7 +2497,7 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
     # + phonetic - Search parameter for phonetic (string) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Patient resources"}
-    remote isolated function searchPatient(
+    remote function searchPatient(
             string? address = (),
             string? address_city = (),
             string? address_postalcode = (),
@@ -2564,20 +2564,20 @@ remote function groupExportGroupOperation(@display {label: "Request Mode"} fhirC
         return self.fhirConnectorObj->search("Patient", mode = fhirClient:POST, searchParameters = params);
     }
 
-remote function matchPatientOperation(@display {label: "Request Mode"} fhirClient:RequestMode mode = fhirClient:POST,
-                                                                             @display {label: "Logical ID"} string? id = (),
-                                                                             @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
-                                                                             @display {label: "Resource data"} json|xml? data = ())
-        returns fhirClient:FHIRResponse|fhirClient:FHIRError {
-    return check self.fhirConnectorObj->callOperation("Patient", "$match", mode, id, queryParameters, data);
-}
-
 remote function summaryPatientOperation(@display {label: "Request Mode"} fhirClient:RequestMode mode = fhirClient:POST,
                                                                              @display {label: "Logical ID"} string? id = (),
                                                                              @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
                                                                              @display {label: "Resource data"} json|xml? data = ())
         returns fhirClient:FHIRResponse|fhirClient:FHIRError {
     return check self.fhirConnectorObj->callOperation("Patient", "$summary", mode, id, queryParameters, data);
+}
+
+remote function matchPatientOperation(@display {label: "Request Mode"} fhirClient:RequestMode mode = fhirClient:POST,
+                                                                             @display {label: "Logical ID"} string? id = (),
+                                                                             @display {label: "Query Parameters"} map<string[]>? queryParameters = (),
+                                                                             @display {label: "Resource data"} json|xml? data = ())
+        returns fhirClient:FHIRResponse|fhirClient:FHIRError {
+    return check self.fhirConnectorObj->callOperation("Patient", "$match", mode, id, queryParameters, data);
 }
 
     # + id - The logical ID of the Practitioner resource
@@ -2609,7 +2609,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + telecom - Search parameter for telecom (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Practitioner resources"}
-    remote isolated function searchPractitioner(
+    remote function searchPractitioner(
             string? address = (),
             string? address_city = (),
             string? address_postalcode = (),
@@ -2679,7 +2679,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + 'service - Search parameter for service (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search PractitionerRole resources"}
-    remote isolated function searchPractitionerRole(
+    remote function searchPractitionerRole(
             string? email = (),
             string? identifier = (),
             string? location = (),
@@ -2751,7 +2751,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Procedure resources"}
-    remote isolated function searchProcedure(
+    remote function searchProcedure(
             string? category = (),
             string? code = (),
             string? date = (),
@@ -2820,7 +2820,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Questionnaire resources"}
-    remote isolated function searchQuestionnaire(
+    remote function searchQuestionnaire(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2862,7 +2862,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + status - Search parameter for status (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search QuestionnaireResponse resources"}
-    remote isolated function searchQuestionnaireResponse(
+    remote function searchQuestionnaireResponse(
             string? encounter = (),
             string? patient = (),
             string? subject = (),
@@ -2907,7 +2907,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search RelatedPerson resources"}
-    remote isolated function searchRelatedPerson(
+    remote function searchRelatedPerson(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2930,7 +2930,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search RequestGroup resources"}
-    remote isolated function searchRequestGroup(
+    remote function searchRequestGroup(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -2966,7 +2966,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + title - Search parameter for title (string) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ResearchStudy resources"}
-    remote isolated function searchResearchStudy(
+    remote function searchResearchStudy(
             string? identifier = (),
             string? status = (),
             string? _count = (),
@@ -3020,7 +3020,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + identifier - Search parameter for identifier (token) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ResearchSubject resources"}
-    remote isolated function searchResearchSubject(
+    remote function searchResearchSubject(
             string? patient = (),
             string? status = (),
             string? study = (),
@@ -3082,7 +3082,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + specimen - Search parameter for specimen (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search ServiceRequest resources"}
-    remote isolated function searchServiceRequest(
+    remote function searchServiceRequest(
             string? authored = (),
             string? category = (),
             string? code = (),
@@ -3155,7 +3155,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Specimen resources"}
-    remote isolated function searchSpecimen(
+    remote function searchSpecimen(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -3178,7 +3178,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + _id - Search parameter for _id (token) - FHIR resource IDs for the desired resources
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Substance resources"}
-    remote isolated function searchSubstance(
+    remote function searchSubstance(
             string? _count = (),
             string? _id = ()
     ) returns fhirClient:FHIRResponse|fhirClient:FHIRError {
@@ -3220,7 +3220,7 @@ remote function summaryPatientOperation(@display {label: "Request Mode"} fhirCli
     # + requester - Search parameter for requester (reference) - 
     # + return - Returns a FHIRResponse or FHIRError for the operation
     @display {label: "Search Task resources"}
-    remote isolated function searchTask(
+    remote function searchTask(
             string? code = (),
             string? encounter = (),
             string? focus = (),

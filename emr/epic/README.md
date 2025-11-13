@@ -55,7 +55,7 @@ The table below lists supported resource types, interactions and operations. Int
 | NutritionOrder | `read`<br>`search-type` | - |
 | Observation | `create`<br>`read`<br>`search-type`<br>`update` | - |
 | Organization | `read`<br>`search-type` | - |
-| Patient | `create`<br>`read`<br>`search-type` | `match`<br>`summary` |
+| Patient | `create`<br>`read`<br>`search-type` | `summary`<br>`match` |
 | Practitioner | `read`<br>`search-type` | - |
 | PractitionerRole | `read`<br>`search-type` | - |
 | Procedure | `create`<br>`read`<br>`search-type`<br>`update` | - |
@@ -93,3 +93,31 @@ The connector represents the interactions and operations as functions. Each func
 | \$Operation           | `{Operation}{ResourceType}Operation` |
 
 Replace `{ResourceType}` with the actual resource type (e.g., Patient, Observation) and `{Operation}` with the specific operation name (e.g., everything, validate).
+
+## Sample Usage
+
+```ballerina
+import ballerinax/health.clients.fhir as fhirClient;
+import <package>/epic.fhir.connector;
+import ballerina/io;
+
+
+public function main() returns error? {
+    // Initialize the Epic connector client
+    fhirClient:FHIRConnectorConfig epicConfig = {
+        baseURL: base,
+        mimeType: fhirClient:FHIR_JSON,
+        authConfig: {
+            tokenEndpoint: tokenEndpoint,
+            clientId: clientId,
+            keyFile: keyFile
+        }
+    };
+    connector:FHIRClientConnector epicFhirclientconnector = check new (epicConfig);
+    
+    // Example 1: Read a patient by ID
+    fhir:FHIRResponse fhirFhirresponse = check epicFhirclientconnector->getPatientById("erXuFYUfucBZaryVksYEcMg3");
+    io:println("Patient Read Response: ", fhirFhirresponse.'resource);
+
+}
+```

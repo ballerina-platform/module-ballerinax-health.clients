@@ -20,7 +20,7 @@ The table below lists supported resource types, interactions and operations. Int
 | Binary | `read` | `autogen-ccd-if` |
 | CarePlan | `read`<br>`search-type` | - |
 | CareTeam | `read`<br>`search-type` | - |
-| ChargeItem | `read`<br>`search-type` | `credit`<br>`modify`<br>`create` |
+| ChargeItem | `read`<br>`search-type` | `modify`<br>`create`<br>`credit` |
 | Communication | `read`<br>`search-type`<br>`create`<br>`patch` | - |
 | Condition | `read`<br>`search-type`<br>`create`<br>`update` | - |
 | Consent | `read`<br>`search-type` | - |
@@ -79,3 +79,36 @@ The connector represents the interactions and operations as functions. Each func
 | \$Operation           | `{Operation}{ResourceType}Operation` |
 
 Replace `{ResourceType}` with the actual resource type (e.g., Patient, Observation) and `{Operation}` with the specific operation name (e.g., everything, validate).
+
+## Sample Usage
+
+```ballerina
+import ballerinax/health.clients.fhir as fhirClient;
+import <package>/cerner.fhir.connector;
+import ballerina/io;
+
+
+public function main() returns error? {
+    // Initialize the Cerner connector client
+    fhirClient:FHIRConnectorConfig cernerConfig = {
+        baseURL: base,
+        mimeType: fhirClient:FHIR_JSON,
+        authConfig: {
+            tokenUrl: tokenUrl,
+            clientId: clientId,
+            clientSecret: clientSecret,
+            scopes: scopes
+        }
+    };
+    connector:FHIRClientConnector cernerFhirclientconnector = check new (cernerConfig);
+    
+    // Example 1: Read a patient by ID
+    fhirClient:FHIRResponse patientResult = check cernerFhirclientconnector->getPatientById("12724067");
+    io:println("[FHIR GET] Patient resource by ID (12724067): ", patientResult.'resource);
+    
+    // Example 2: Search Encounters by Patient
+    fhirClient:FHIRResponse encounterResult = check cernerFhirclientconnector->searchEncounter(patient = "12724066");
+    io:println("[FHIR SEARCH] Encounter resources for Patient ID (12724067): ", encounterResult.'resource);
+}
+```
+

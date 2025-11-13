@@ -1,7 +1,6 @@
 [package]
 org = "mycustomizations"
 name = "cerner.fhir.connector"
-version = "1.0.0"
+version = "1.0.3"
 distribution = "2201.12.8"
 visibility = "private"
-icon = "./icons/cerner_connector.png"

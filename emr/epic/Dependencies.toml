@@ -403,7 +403,7 @@ modules = [
 [[package]]
 org = "mycustomizations"
 name = "epic.fhir.connector"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
 	{org = "ballerinax", name = "health.clients.fhir"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"},
