@@ -1,0 +1,7 @@
+[package]
+org = "mycustomizations"
+name = "epic.fhir.connector"
+version = "1.0.1"
+distribution = "2201.12.8"
+visibility = "private"
+icon = "./icons/epic_connector.png"
