@@ -65,3 +65,30 @@ The connector represents the interactions and operations as functions. Each func
 | \$Operation           | `{Operation}{ResourceType}Operation` |
 
 Replace `{ResourceType}` with the actual resource type (e.g., Patient, Observation) and `{Operation}` with the specific operation name (e.g., everything, validate).
+
+## Sample Usage
+
+```ballerina
+import ballerinax/health.clients.fhir as fhirClient;
+import <package>/athena.fhir.connector;
+import ballerina/io;
+
+public function main() returns error? {
+    // Initialize the Athena connector client
+    fhirClient:FHIRConnectorConfig athenaConfig = {
+        baseURL: base,
+        mimeType: fhirClient:FHIR_JSON,
+        authConfig: {
+            tokenUrl: tokenUrl,
+            clientId: clientId,
+            clientSecret: clientSecret,
+            scopes: scopes
+        }
+    };
+    connector:FHIRClientConnector athenaFhirclientconnector = check new (athenaConfig);
+    
+    // Example 1: Read a patient by ID
+    fhir:FHIRResponse fhirFhirresponse = check athenaFhirclientconnector->getPatientById("patient-id-123");
+    io:println("Patient Read Response: ", fhirFhirresponse.'resource);
+
+}
