@@ -35,16 +35,28 @@ jobs:
 
           # Convert CHANGED_FILES to an array
           readarray -t CHANGED_FILES_ARRAY <<<"${CHANGED_FILES}"
-          
+
           # Remove duplicates from the CHANGED_FILES_ARRAY
           declare -A UNIQUE_PATHS_MAP
           for file in "${CHANGED_FILES_ARRAY[@]}"; do
-            if [[ $file == $FHIR_PATTERN ]]; then
-              EXTRACTED_PATH=$(echo "$file" | cut -d '/' -f 1)
+            # Skip .github workflow files
+            if [[ $file == $GITHUB_WORKFLOWS_DIR/* ]]; then
+              continue
             fi
 
-            if [[ $EXTRACTED_PATH && $EXTRACTED_PATH != $GITHUB_WORKFLOWS_DIR ]]; then
-              UNIQUE_PATHS_MAP[$EXTRACTED_PATH]=1
+            # Check if file has at least one directory level
+            if [[ $file =~ ^[^/]+/.+ ]]; then
+              # Check if it's a 2nd level project (e.g., emr/athena/Ballerina.toml)
+              if [[ $file =~ ^[^/]+/[^/]+/.+ ]]; then
+                EXTRACTED_PATH=$(echo "$file" | cut -d '/' -f 1-2)
+              # Otherwise it's a 1st level project (e.g., fhir/Ballerina.toml)
+              else
+                EXTRACTED_PATH=$(echo "$file" | cut -d '/' -f 1)
+              fi
+
+              if [[ $EXTRACTED_PATH ]]; then
+                UNIQUE_PATHS_MAP[$EXTRACTED_PATH]=1
+              fi
             fi
           done
           
