@@ -1,0 +1,8 @@
+[package]
+org = "ballerinax"
+name = "health.clients.fhir.epic"
+version = "1.0.0"
+distribution = "2201.12.9"
+#visibility = "private"
+icon = "./icons/Icon_Epic.png"
+keywords=["Healthcare", "FHIR", "epic", "epic-fhir-connector"]

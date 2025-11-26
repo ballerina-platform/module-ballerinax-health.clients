@@ -1,0 +1,8 @@
+[package]
+org = "ballerinax"
+name = "health.clients.fhir.athenahealth"
+version = "1.0.0"
+distribution = "2201.12.9"
+#visibility = "private"
+icon = "./icons/Icon_athena.png"
+keywords=["Healthcare", "FHIR", "athenahealth", "athena-fhir-connector"]
