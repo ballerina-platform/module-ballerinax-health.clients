@@ -92,7 +92,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "http"
-version = "2.14.7"
+version = "2.14.8"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "mime"
-version = "2.12.0"
+version = "2.12.1"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -358,7 +358,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.fhir.r4"
-version = "6.2.2"
+version = "6.2.3"
 dependencies = [
 	{org = "ballerina", name = "constraint"},
 	{org = "ballerina", name = "http"},
@@ -388,13 +388,13 @@ modules = [
 
 [[package]]
 org = "mycustomizations"
-name = "athena.fhir.connector"
+name = "health.clients.fhir.athenahealth"
 version = "1.0.0"
 dependencies = [
 	{org = "ballerinax", name = "health.clients.fhir"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"}
 ]
 modules = [
-	{org = "mycustomizations", packageName = "athena.fhir.connector", moduleName = "athena.fhir.connector"}
+	{org = "mycustomizations", packageName = "health.clients.fhir.athenahealth", moduleName = "health.clients.fhir.athenahealth"}
 ]
 

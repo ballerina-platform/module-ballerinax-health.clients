@@ -92,7 +92,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "http"
-version = "2.14.7"
+version = "2.14.8"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "mime"
-version = "2.12.0"
+version = "2.12.1"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"},
@@ -358,7 +358,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.fhir.r4"
-version = "6.2.2"
+version = "6.2.3"
 dependencies = [
 	{org = "ballerina", name = "constraint"},
 	{org = "ballerina", name = "http"},
@@ -402,14 +402,14 @@ modules = [
 
 [[package]]
 org = "mycustomizations"
-name = "cerner.fhir.connector"
-version = "1.0.3"
+name = "health.clients.fhir.cerner"
+version = "1.0.0"
 dependencies = [
 	{org = "ballerinax", name = "health.clients.fhir"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"},
 	{org = "ballerinax", name = "health.fhir.r4.uscore700"}
 ]
 modules = [
-	{org = "mycustomizations", packageName = "cerner.fhir.connector", moduleName = "cerner.fhir.connector"}
+	{org = "mycustomizations", packageName = "health.clients.fhir.cerner", moduleName = "health.clients.fhir.cerner"}
 ]
 
