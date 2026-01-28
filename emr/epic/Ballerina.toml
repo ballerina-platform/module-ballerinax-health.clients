@@ -5,4 +5,4 @@ version = "1.0.1"
 distribution = "2201.12.9"
 #visibility = "private"
 icon = "./icons/Icon_Epic.png"
-keywords=["Healthcare", "FHIR", "epic", "epic-fhir-connector"]
+keywords = ["Area/Healthcare", "Industry/Healthcare", "Type/Connector", "Vendor/Epic", "Epic FHIR Connector"]

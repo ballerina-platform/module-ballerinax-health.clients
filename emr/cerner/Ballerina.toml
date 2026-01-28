@@ -5,4 +5,4 @@ version = "1.0.0"
 distribution = "2201.12.9"
 #visibility = "private"
 icon = "./icons/Icon_Cerner.png"
-keywords=["Healthcare", "FHIR", "cerner", "cerner-fhir-connector"]
+keywords = ["Area/Healthcare", "Industry/Healthcare", "Type/Connector", "Vendor/Cerner", "Cerner FHIR Connector"]
