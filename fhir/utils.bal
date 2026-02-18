@@ -209,7 +209,7 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
         json|xml responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
 
-        if statusCode == STATUS_CODE_OK {
+        if (statusCode == STATUS_CODE_OK || statusCode == STATUS_CODE_CREATED || statusCode == STATUS_CODE_NO_CONTENT || statusCode == STATUS_CODE_ACCEPTED) {
             FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
