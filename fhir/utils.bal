@@ -81,7 +81,7 @@ isolated function getFhirResourceResponse(http:Response response) returns FHIRRe
         xml|json responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
         int statusCode = response.statusCode;
-        if statusCode == STATUS_CODE_OK {
+        if is2xx(statusCode) {
             return {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
         } else {
             return error(FHIR_SERVER_ERROR, httpStatusCode = statusCode, 'resource = responseBody, serverResponseHeaders = responseHeaders);
@@ -149,7 +149,7 @@ isolated function getAlteredResourceResponse(http:Response response, PreferenceT
         int statusCode = response.statusCode;
         map<string> responseHeaders = extractHeadersFromResponse(response);
 
-        if statusCode == STATUS_CODE_OK || statusCode == STATUS_CODE_CREATED {
+        if is2xx(statusCode) {
             if preference == MINIMAL {
                 string header = check response.getHeader(LOCATION);
                 responseBody = extractResourceIdNVid(header);
@@ -173,12 +173,10 @@ isolated function getDeleteResourceResponse(http:Response response) returns FHIR
         int statusCode = response.statusCode;
         xml|json responseBody = "";
         map<string> responseHeaders = extractHeadersFromResponse(response);
-
-        if statusCode == STATUS_CODE_OK {
-            responseBody = check extractResponseBody(response);
-            FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
-            return fhirResponse;
-        } else if statusCode == STATUS_CODE_NO_CONTENT || statusCode == STATUS_CODE_ACCEPTED {
+        if is2xx(statusCode) {
+            if statusCode == STATUS_CODE_OK {
+                responseBody = check extractResponseBody(response);
+            }
             FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
@@ -208,8 +206,7 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
         int statusCode = response.statusCode;
         json|xml responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
-
-        if (statusCode == STATUS_CODE_OK || statusCode == STATUS_CODE_CREATED || statusCode == STATUS_CODE_NO_CONTENT || statusCode == STATUS_CODE_ACCEPTED) {
+            if (is2xx(statusCode)) {
             FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
@@ -551,7 +548,7 @@ isolated function getBulkExportResponse(http:Response response) returns FHIRResp
         return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${tempResponseBody.message()}`, errorDetails = tempResponseBody);
     }
     map<string> responseHeaders = extractHeadersFromResponse(response);
-    if statusCode == http:STATUS_OK || statusCode == http:STATUS_ACCEPTED {
+    if is2xx(statusCode) {
         return {
             httpStatusCode: statusCode,
             'resource: responseBody,
@@ -631,6 +628,11 @@ isolated function getConditionalParams(SearchParameters|map<string[]> conditiona
 
 isolated function sanitizeRequestUrl(string url) returns string {
     return url.endsWith(AMPERSAND) || url.endsWith(QUESTION_MARK) ? url.substring(0, url.length() - 1) : url;
+}
+
+// Checks whether the HTTP status code is in the 2xx range.
+isolated function is2xx(int statusCode) returns boolean {
+    return statusCode >= 200 && statusCode < 300;
 }
 
 // regex in FHIR client
