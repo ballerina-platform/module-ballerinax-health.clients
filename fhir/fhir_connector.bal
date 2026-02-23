@@ -983,6 +983,31 @@ public isolated client class FHIRConnector {
             return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
         }
     }
+
+    # Proxies an incoming HTTP request to the FHIR server and returns the upstream response as-is.
+    #
+    # + requestUrl - Relative request URL to be forwarded to the configured FHIR server
+    # + request - Incoming HTTP request to be forwarded as-is
+    # + return - The upstream FHIRResponse as-is (with URL rewriting applied when enabled)
+    @display {label: "Proxy request to FHIR server"}
+    remote isolated function proxy(@display {label: "Request URL"} string requestUrl,
+            @display {label: "Incoming Request"} http:Request request)
+                                    returns FHIRResponse|FHIRError {
+        do {
+            log:printDebug(string `Request URL: ${requestUrl}`);
+            FHIRResponse response = check self.httpClient->forward(requestUrl, check enrichRequest(request, self.pkjwtHanlder));
+            if self.urlRewrite {
+                return rewriteServerUrl(response, self.baseUrl, self.fileServerUrl, self.replacementURL);
+            }
+            return response;
+        } on fail error e {
+            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
+            if e is FHIRError {
+                return e;
+            }
+            return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+        }
+    }
 }
 
 # Waits for the completion of a bulk export file download.
