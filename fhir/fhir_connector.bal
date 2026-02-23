@@ -988,18 +988,19 @@ public isolated client class FHIRConnector {
     #
     # + requestUrl - Relative request URL to be forwarded to the configured FHIR server
     # + request - Incoming HTTP request to be forwarded as-is
-    # + return - The upstream FHIRResponse as-is (with URL rewriting applied when enabled)
+    # + return - The upstream FHIRResponse, with URL rewriting applied when enabled.
     @display {label: "Proxy request to FHIR server"}
     remote isolated function proxy(@display {label: "Request URL"} string requestUrl,
             @display {label: "Incoming Request"} http:Request request)
                                     returns FHIRResponse|FHIRError {
         do {
             log:printDebug(string `Request URL: ${requestUrl}`);
-            FHIRResponse response = check self.httpClient->forward(requestUrl, check enrichRequest(request, self.pkjwtHanlder));
+            http:Response response = check self.httpClient->forward(requestUrl, check enrichRequest(request, self.pkjwtHanlder));
+            FHIRResponse result = check getFhirResourceResponse(response);
             if self.urlRewrite {
-                return rewriteServerUrl(response, self.baseUrl, self.fileServerUrl, self.replacementURL);
+                return rewriteServerUrl(result, self.baseUrl, self.fileServerUrl, self.replacementURL);
             }
-            return response;
+            return result;
         } on fail error e {
             log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
