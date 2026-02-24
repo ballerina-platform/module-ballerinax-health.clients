@@ -206,7 +206,7 @@ isolated function getBundleResponse(http:Response response) returns FHIRResponse
         int statusCode = response.statusCode;
         json|xml responseBody = check extractResponseBody(response);
         map<string> responseHeaders = extractHeadersFromResponse(response);
-            if (is2xx(statusCode)) {
+        if (is2xx(statusCode)) {
             FHIRResponse fhirResponse = {httpStatusCode: statusCode, 'resource: responseBody, serverResponseHeaders: responseHeaders};
             return fhirResponse;
         } else {
@@ -595,6 +595,69 @@ isolated function rewriteServerUrl(FHIRResponse response, string baseUrl, string
         return returnResponse;
     } on fail var e {
         return error(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
+    }
+}
+
+// Replaces base url in all headers and payload content of a generic http:Response.
+isolated function generalRewriteServerUrl(http:Response response, string baseUrl, string? replacementUrl = ()) returns http:Response|FHIRError {
+    if replacementUrl is () {
+        return response;
+    }
+
+    do {
+        var rewrite = isolated function(string inputString) returns string {
+            return re `${baseUrl}`.replaceAll(inputString, <string>replacementUrl);
+        };
+
+        // Rewrite all header values (including multi-value headers)
+        foreach string headerName in response.getHeaderNames() {
+            string[] values = check response.getHeaders(headerName);
+            if values.length() > 0 {
+                response.removeHeader(headerName);
+                foreach string value in values {
+                    response.addHeader(headerName, rewrite(value));
+                }
+            }
+        }
+
+        string contentType = "";
+        string contentTypeCheck = "";
+        string|error contentTypeResult = response.getHeader(http:CONTENT_TYPE);
+        if contentTypeResult is string {
+            contentType = contentTypeResult;
+            contentTypeCheck = contentType.toLowerAscii();
+        }
+
+        // Rewrite payload based on type; fallback to text when possible.
+        if contentTypeCheck.includes("json") {
+            json payload = check response.getJsonPayload();
+            string rewritten = rewrite(payload.toJsonString());
+            json rewrittenJson = check rewritten.fromJsonString();
+            response.setPayload(rewrittenJson);
+            return response;
+        }
+
+        if contentTypeCheck.includes("xml") {
+            xml payload = check response.getXmlPayload();
+            string rewritten = rewrite(payload.toString());
+            xml rewrittenXml = check xml:fromString(rewritten);
+            response.setPayload(rewrittenXml);
+            return response;
+        }
+
+        string|error textPayload = response.getTextPayload();
+        if textPayload is string {
+            string rewrittenText = rewrite(textPayload);
+            if contentType == "" {
+                response.setTextPayload(rewrittenText);
+            } else {
+                response.setTextPayload(rewrittenText, contentType = contentType);
+            }
+        }
+
+        return response;
+    } on fail var e {
+        return error FHIRConnectorError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, errorDetails = e);
     }
 }
 
