@@ -984,7 +984,7 @@ public isolated client class FHIRConnector {
         }
     }
 
-    # Proxies an incoming HTTP request to the FHIR server and returns the upstream response as-is.
+    # Proxies an incoming HTTP request to the FHIR server, with URL rewriting applied when enabled.
     #
     # + requestUrl - Relative request URL to be forwarded to the configured FHIR server
     # + request - Incoming HTTP request to be forwarded as-is
