@@ -1001,7 +1001,7 @@ public isolated client class FHIRConnector {
             }
             return result;
         } on fail error e {
-            log:printDebug(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
+            log:printError(string `${FHIR_CONNECTOR_ERROR}: ${e.message()}`, e);
             if e is FHIRError {
                 return e;
             }
