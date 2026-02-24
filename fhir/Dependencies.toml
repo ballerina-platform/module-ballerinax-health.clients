@@ -410,7 +410,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.clients.fhir"
-version = "3.0.3"
+version = "3.0.4"
 dependencies = [
 	{org = "ballerina", name = "file"},
 	{org = "ballerina", name = "ftp"},
