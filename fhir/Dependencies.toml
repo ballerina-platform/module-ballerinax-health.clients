@@ -5,7 +5,7 @@
 
 [ballerina]
 dependencies-toml-version = "2"
-distribution-version = "2201.12.3"
+distribution-version = "2201.12.10"
 
 [[package]]
 org = "ballerina"
@@ -50,9 +50,10 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "data.csv"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
-	{org = "ballerina", name = "jballerina.java"}
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "log"}
 ]
 
 [[package]]
@@ -67,7 +68,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "data.xmldata"
-version = "1.6.0"
+version = "1.6.1"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.object"}

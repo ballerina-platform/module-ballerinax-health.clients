@@ -154,6 +154,10 @@ http:Service FhirMockService = service object {
 
     resource function delete [string 'type]/[string id](http:Request payload) returns http:Response {
         http:Response response = new ();
+        // Regression check: auth headers must not be sent as request body
+        byte[]|error binaryPayload = payload.getBinaryPayload();
+        boolean headersInBody = binaryPayload is byte[] && binaryPayload.length() > 0;
+        response.setHeader("X-Auth-Headers-In-Body", headersInBody.toString());
         if id == "pat1" {
             string? url = payload.getQueryParamValue("url");
             if (url is string && url == "exists") || url is () {
@@ -162,7 +166,6 @@ http:Service FhirMockService = service object {
                 response.statusCode = http:STATUS_NOT_FOUND;
                 response.setPayload(testDeleteResourceFailedData, FHIR_JSON);
             }
-            // response.statusCode = http:STATUS_NO_CONTENT;
         } else {
             response.statusCode = http:STATUS_NOT_FOUND;
             response.setPayload(testDeleteResourceFailedData, FHIR_JSON);

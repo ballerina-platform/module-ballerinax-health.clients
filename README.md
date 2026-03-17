@@ -22,7 +22,7 @@ For more information, go to the module(s).
 
 Execute the commands below to build from the source.
 
-- To build a clinet (eg - to build the fhir client):
+- To build a client (eg - to build the fhir client):
     ```shell
     bal pack ./fhir
     ```

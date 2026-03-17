@@ -275,6 +275,26 @@ function testDelete() returns FHIRError? {
     // Conditional delete using a conditional URL (resource exists)
     FHIRResponse result6 = check fhirConnector->delete(PATIENT, id = "pat1", onCondition = {"url": "exists"});
     test:assertEquals(result6.httpStatusCode, 204, "Failed to return the correct status code for conditional delete (resource exists)");
+
+    // Regression: verify auth headers are passed as request headers, not as request body
+    FHIRResponse result7 = check fhirConnector->delete(PATIENT, "pat1", onCondition = "url=exists");
+    string headersInBody = result7.serverResponseHeaders["x-auth-headers-in-body"] ?: "true";
+    test:assertEquals(headersInBody, "false", "Auth headers must not be passed as request body when calling delete");
+
+    // Invalid string condition should return FHIRConnectorError
+    FHIRResponse|FHIRError result8 = fhirConnector->delete(PATIENT, "pat1", onCondition = "example?url=invalid");
+    if result8 is FHIRError {
+        if result8 is FHIRConnectorError {
+            error? e = result8.detail().errorDetails;
+            if (e is error) {
+                test:assertEquals(e.message(), "Conditional URL should be in the format \"searchParam=value\".", "Failed to return invalid conditional URL error for delete");
+            }
+        } else {
+            test:assertFail("Failed to respond with the correct error type:FhirConnectorError for invalid delete condition");
+        }
+    } else {
+        test:assertFail("Failed to respond with the correct error for invalid delete condition");
+    }
 }
 
 @test:Config {}
