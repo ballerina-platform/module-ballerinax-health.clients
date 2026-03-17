@@ -340,7 +340,8 @@ public isolated client class FHIRConnector {
         requestURL = string `${SLASH}${'type}${SLASH}${id}${QUESTION_MARK}${searchParams}`;
         do {
             log:printDebug(string `Request URL: ${requestURL}`);
-            http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), check enrichHeaders({}, self.pkjwtHanlder));
+            map<string> authHeaders = check enrichHeaders({}, self.pkjwtHanlder);
+            http:Response response = check self.httpClient->delete(sanitizeRequestUrl(requestURL), headers = authHeaders);
             FHIRResponse result = check getDeleteResourceResponse(response);
             if self.urlRewrite {
                 return rewriteServerUrl(result, self.baseUrl, replacementUrl = self.replacementURL);
