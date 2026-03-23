@@ -7,7 +7,7 @@ authors = ["Ballerina"]
 keywords = ["Area/Healthcare", "Industry/Healthcare", "Type/Connector", "HL7", "HL7V2"]
 icon = "icon.png"
 repository = "https://github.com/ballerina-platform/module-ballerinax-health.clients"
-readme = "Package.md"
+readme = "README.md"
 
 [build-options]
 observabilityIncluded = true

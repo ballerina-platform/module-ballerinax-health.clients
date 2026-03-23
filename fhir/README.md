@@ -1,36 +1,8 @@
-# Ballerina FHIR Client Connector
-
-A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-  - [Initialize the Connector](#initialize-the-connector)
-  - [CRUD Operations: Standard (Non-Conditional) and Conditional Interactions](#crud-operations-standard-non-conditional-and-conditional-interactions)
-    - [Create a Resource](#create-a-resource)
-    - [Read a Resource](#read-a-resource)
-    - [Update a Resource](#update-a-resource)
-    - [Patch a Resource](#patch-a-resource)
-    - [Delete a Resource](#delete-a-resource)
-  - [Search Operation (GET and POST)](#search-operation-get-and-post)
-  - [Invoking Custom FHIR Operations](#invoking-custom-fhir-operations)
-  - [Bulk Data Operations](#bulk-data-operations)
-  - [CapabilityStatement Validation](#capabilitystatement-validation)
-- [Bulk Export Usage with FHIR Client](#bulk-export-usage-with-fhir-client)
-- [Advanced Features](#advanced-features)
-- [References](#references)
-
----
-
 ## Overview
 
-This package provides a Ballerina connector to interact with FHIR servers, supporting all major FHIR operations and authentication mechanisms. It is suitable for building healthcare applications that need to communicate with FHIR-compliant systems.
+A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms. It is suitable for building healthcare applications that need to communicate with FHIR-compliant systems.
 
-## Features
+## Key Features
 
 - Connect to any FHIR server supporting standard authentication (OAuth2, Basic Auth, PKJWT, etc.)
 - Perform all FHIR CRUD operations and conditional interactions

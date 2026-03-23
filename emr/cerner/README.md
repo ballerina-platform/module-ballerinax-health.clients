@@ -1,6 +1,12 @@
-# FHIR Client Connector
+## Overview
 
-FHIR client connector that can be used to connect to a FHIR server and perform common interactions and operations.
+The Cerner FHIR connector provides a client for connecting to Cerner FHIR servers and performing common FHIR interactions and operations.
+
+## Key Features
+
+- Connect to Cerner FHIR server endpoints
+- Handle Cerner FHIR server specific authentication and token management
+- Access supported Cerner FHIR R4 resources, interactions, and operations
 
 ## Capability Statement
 

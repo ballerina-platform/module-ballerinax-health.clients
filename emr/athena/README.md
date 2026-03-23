@@ -1,6 +1,12 @@
-# FHIR Client Connector
+## Overview
 
-FHIR client connector that can be used to connect to a FHIR server and perform common interactions and operations.
+The AthenaHealth FHIR connector provides a client for connecting to AthenaHealth FHIR servers and performing common FHIR interactions and operations.
+
+## Key Features
+
+- Connect to AthenaHealth FHIR server endpoints
+- Handle AthenaHealth FHIR server specific authentication and token management
+- Access supported AthenaHealth FHIR R4 resources, interactions, and operations
 
 ## Capability Statement
 
