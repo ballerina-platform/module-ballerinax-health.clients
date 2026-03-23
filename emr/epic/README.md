@@ -1,6 +1,6 @@
 ## Overview
 
-The Epic FHIR connector provides a client for connecting to Epic FHIR server Sandbox(https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4) and performing common FHIR interactions and operations.å
+The Epic FHIR connector provides a client for connecting to Epic FHIR server Sandbox(https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4) and performing common FHIR interactions and operations.
 
 ## Key Features
 
