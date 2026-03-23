@@ -348,7 +348,7 @@ dependencies = [
 [[package]]
 org = "ballerinax"
 name = "health.clients.fhir"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
 	{org = "ballerina", name = "file"},
 	{org = "ballerina", name = "ftp"},
@@ -370,7 +370,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "health.clients.fhir.athenahealth"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
 	{org = "ballerinax", name = "health.clients.fhir"},
 	{org = "ballerinax", name = "health.fhir.r4.international401"}
