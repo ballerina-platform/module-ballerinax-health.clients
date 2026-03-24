@@ -171,7 +171,7 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->callOpe
 
 #### Bulk Data Operations
 
-##### Start Bulk Export:**
+** Start Bulk Export:**
 
 ```ballerina
 fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
