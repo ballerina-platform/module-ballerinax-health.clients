@@ -2,17 +2,17 @@
 
 The AthenaHealth FHIR connector provides a client for connecting to AthenaHealth FHIR servers and performing common FHIR interactions and operations.
 
-## Key Features
+### Key Features
 
 - Connect to AthenaHealth FHIR server endpoints
 - Handle AthenaHealth FHIR server specific authentication and token management
 - Access supported AthenaHealth FHIR R4 resources, interactions, and operations
 
-## Capability Statement
+### Capability Statement
 
 - `https://api.preview.platform.athenahealth.com/fhir/r4/metadata`
 
-## Supported FHIR Resource Types
+### Supported FHIR Resource Types
 
 The table below lists supported resource types, interactions and operations. Interactions are shown as inline code and separated by line breaks for readability.
 
@@ -72,7 +72,7 @@ The connector represents the interactions and operations as functions. Each func
 
 Replace `{ResourceType}` with the actual resource type (e.g., Patient, Observation) and `{Operation}` with the specific operation name (e.g., everything, validate).
 
-## Sample Usage
+### Sample Usage
 
 ```ballerina
 import ballerinax/health.clients.fhir as fhirClient;

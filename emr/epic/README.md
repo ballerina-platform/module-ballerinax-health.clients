@@ -2,17 +2,17 @@
 
 The Epic FHIR connector provides a client for connecting to Epic FHIR server Sandbox(https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4) and performing common FHIR interactions and operations.
 
-## Key Features
+### Key Features
 
 - Connect to Epic FHIR server endpoints
 - Handle Epic FHIR server specific authentication and token management
 - Access supported Epic FHIR R4 resources and interactions
 
-## Capability Statement
+### Capability Statement
 
 - `https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4/metadata`
 
-## Supported FHIR Resource Types
+### Supported FHIR Resource Types
 
 The table below lists supported resource types, interactions and operations. Interactions are shown as inline code and separated by line breaks for readability.
 

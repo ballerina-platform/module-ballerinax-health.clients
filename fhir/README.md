@@ -2,7 +2,7 @@
 
 A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms. It is suitable for building healthcare applications that need to communicate with FHIR-compliant systems.
 
-## Key Features
+### Key Features
 
 - Connect to any FHIR server supporting standard authentication (OAuth2, Basic Auth, PKJWT, etc.)
 - Perform all FHIR CRUD operations and conditional interactions
@@ -11,9 +11,9 @@ A generic FHIR client module for Ballerina, enabling seamless integration with F
 - Support for FHIR+JSON and FHIR+XML payloads
 - Optionally rewrite FHIR server URLs in responses
 
-## Installation
+### Installation
 
-### Importing the Package
+#### Importing the Package
 
 Install the package using the Ballerina package manager:
 
@@ -27,9 +27,9 @@ To use the connector in your Ballerina code, import it as follows:
 import ballerinax/health.clients.fhir as fhir_client;
 ```
 
-## Configuration
+### Configuration
 
-### Authentication
+#### Authentication
 
 The connector supports multiple authentication methods. For example, to use OAuth2 Client Credentials:
 
@@ -43,7 +43,7 @@ http:OAuth2ClientCredentialsGrantConfig ehrSystemAuthConfig = {
 };
 ```
 
-### Connector Configuration
+#### Connector Configuration
 
 ```ballerina
 fhir_client:FHIRConnectorConfig fhirServerConfig = {
@@ -53,17 +53,17 @@ fhir_client:FHIRConnectorConfig fhirServerConfig = {
 };
 ```
 
-## Usage
+### Usage
 
-### Initialize the Connector
+#### Initialize the Connector
 
 ```ballerina
 fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
 ```
 
-### CRUD Operations: Standard (Non-Conditional) and Conditional Interactions
+#### CRUD Operations: Standard (Non-Conditional) and Conditional Interactions
 
-#### Create a Resource
+##### Create a Resource
 
 - **Standard (Non-Conditional) Create:**
 
@@ -78,14 +78,14 @@ fhir_client:FHIRConnector fhirConnector = check new (fhirServerConfig);
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->create(resourceJson, onCondition = condition);
     ```
 
-#### Read a Resource
+##### Read a Resource
 
 ```ballerina
 fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhirConnector->getById("Patient", "123456");
 ```
 
-#### Update a Resource
+##### Update a Resource
 
 - **Standard (Non-Conditional) Update:**
 
@@ -100,7 +100,7 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->update(resourceJson, onCondition = condition);
     ```
 
-#### Patch a Resource
+##### Patch a Resource
 
 - **Standard (Non-Conditional) Patch:**
 
@@ -115,7 +115,7 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->patch("Patient", patchData, onCondition = condition);
     ```
 
-#### Delete a Resource
+##### Delete a Resource
 
 - **Standard (Non-Conditional) Delete:**
 
@@ -130,7 +130,7 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->delete("Patient", onCondition = condition);
     ```
 
-### Search Operation (GET and POST)
+#### Search Operation (GET and POST)
 
 - **GET Search:**
 
@@ -144,11 +144,11 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response =
     fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->search("Patient", mode = fhir_client:POST, searchParameters = { "name": ["John"] });
     ```
 
-### Invoking Custom FHIR Operations
+#### Invoking Custom FHIR Operations
 
 You can invoke custom FHIR operations (e.g., `$everything`, `$lookup`) using the `callOperation` method.
 
-#### Usage of `mode` parameter in `callOperation`
+##### Usage of `mode` parameter in `callOperation`
 
 The `mode` parameter specifies the HTTP method to use when invoking the FHIR operation:
 
@@ -169,9 +169,9 @@ fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->callOpe
 fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->callOperation("Patient", operationName = "everything", mode = http:GET, id = "123");
 ```
 
-### Bulk Data Operations
+#### Bulk Data Operations
 
-**Start Bulk Export:**
+##### Start Bulk Export:**
 
 ```ballerina
 fhir_client:FHIRResponse|fhir_client:FHIRError response = fhirConnector->bulkExport(fhir_client:EXPORT_PATIENT);
@@ -229,7 +229,7 @@ fhir_client:FHIRConnectorConfig fhirServerConfig = {
 > When the export is completed, the `bulkStatus` function returns the file URLs as part of the response.  
 > If the export is still in progress, `bulkStatus` returns the current status of the export operation.
 
-### 2. Sample: Bulk Export with FHIR Client (Service Example)
+#### 2. Sample: Bulk Export with FHIR Client (Service Example)
 
 ```ballerina
 import ballerina/http;
@@ -274,13 +274,13 @@ service /Patient on new http:Listener(8080) {
 }
 ```
 
-## Advanced Features
+### Advanced Features
 
 - **Bulk Data Export**: Configure `bulkExportConfig` in the connector config to support file servers for exported data.
 - **URL Rewriting**: Enable `urlRewrite` and set `replacementURL` in the config to rewrite FHIR server URLs in responses.
 - **PKJWT Authentication**: Supported via `auth:PKJWTAuthConfig`.
 
-## References
+### References
 
 - [FHIR REST API Specification](https://hl7.org/fhir/http.html)
 - [FHIR Bulk Data Export IG](https://hl7.org/fhir/uv/bulkdata/export.html)
