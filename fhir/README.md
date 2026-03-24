@@ -2,6 +2,8 @@
 
 A generic FHIR client module for Ballerina, enabling seamless integration with FHIR servers for healthcare applications. This connector supports all standard FHIR operations, including CRUD, conditional interactions, and bulk data export, with support for various authentication mechanisms. It is suitable for building healthcare applications that need to communicate with FHIR-compliant systems.
 
+> **Trademark Notice:** FHIR® and the FHIR® logo are the registered trademarks of [Health Level Seven International](https://www.hl7.org/) and their use does not constitute endorsement by HL7®.
+
 ### Key Features
 
 - Connect to any FHIR server supporting standard authentication (OAuth2, Basic Auth, PKJWT, etc.)
