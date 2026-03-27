@@ -2,17 +2,17 @@
 
 The Cerner FHIR connector provides a client for connecting to Cerner FHIR servers and performing common FHIR interactions and operations.
 
-## Key Features
+### Key Features
 
 - Connect to Cerner FHIR server endpoints
 - Handle Cerner FHIR server specific authentication and token management
 - Access supported Cerner FHIR R4 resources, interactions, and operations
 
-## Capability Statement
+### Capability Statement
 
 - `https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d/metadata?_format=application/json`
 
-## Supported FHIR Resource Types
+### Supported FHIR Resource Types
 
 The table below lists supported resource types, interactions and operations. Interactions are shown as inline code and separated by line breaks for readability.
 
@@ -67,7 +67,7 @@ Notes:
 - `—` indicates no special operations supported for that resource in this connector.
 - Use the server's CapabilityStatement to verify support for additional interactions or operations on a given server instance.
 
-## Functions
+### Functions
 
 The connector represents the interactions and operations as functions. Each function corresponds to a specific FHIR interaction or operation.
 
@@ -86,7 +86,7 @@ The connector represents the interactions and operations as functions. Each func
 
 Replace `{ResourceType}` with the actual resource type (e.g., Patient, Observation) and `{Operation}` with the specific operation name (e.g., everything, validate).
 
-## Sample Usage
+### Sample Usage
 
 ```ballerina
 import ballerinax/health.clients.fhir as fhirClient;

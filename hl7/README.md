@@ -2,16 +2,16 @@
 
 This is a HL7 v2 client implemented in Ballerina. It enables applications to connect to HL7 exchanges (servers) over TCP and send HL7 v2 messages to remote HL7 servers.
 
-## Key Features
+### Key Features
 
 - Send HL7 v2 messages to remote HL7 servers using TCP
 - Use a simple `HL7Client` API for request-response interactions
 - Configure TLS using `secureSocket` settings for secure transport
 - Receive typed HL7 response messages and structured HL7 errors
 
-## Installation
+### Installation
 
-### Importing the Connector
+#### Importing the Connector
 
 Import the connector in your Ballerina project:
 
@@ -19,7 +19,7 @@ Import the connector in your Ballerina project:
 import ballerinax/health.clients.hl7 as hl7;
 ```
 
-## Usage
+### Usage
 
 This module provides the `HL7Client` client to send HL7 messages to remote HL7 endpoints.
 
@@ -73,7 +73,7 @@ public function main() returns error? {
 }
 ```
 
-### Configuring a Secure Connection
+#### Configuring a Secure Connection
 
 To configure TLS for the HL7 client, pass a `secureSocket` configuration in the `tcp:ClientConfiguration` when initializing the client.
 
@@ -86,7 +86,7 @@ hl7:HL7Client hl7Client = check new ("localhost", 9876, config = {
 });
 ```
 
-## Error Handling
+### Error Handling
 
 The client returns `hl7v2:HL7Error` values based on the error category:
 
@@ -94,7 +94,7 @@ The client returns `hl7v2:HL7Error` values based on the error category:
 - `HL7_V2_CLIENT_ERROR`: Client transport or connectivity issues
 - `HL7_V2_PARSER_ERROR`: Issues while parsing the response message
 
-## References
+### References
 
 - [Ballerina Central - health.clients.hl7](https://central.ballerina.io/ballerinax/health.clients.hl7)
 - [HL7 International](https://www.hl7.org/)
